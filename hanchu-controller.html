@@ -1188,7 +1188,7 @@
                 data: [{ k: key }]
             };
 
-            await sendCommand(command, true); // LOCAL mode
+            await sendCommand(command, false); // STANDARD mode - raw JSON
             log(`📖 Reading: ${key}`);
         }
 
@@ -1200,7 +1200,7 @@
                 data: [{ k: key, v: value }]
             };
 
-            await sendCommand(command, true); // LOCAL mode
+            await sendCommand(command, false); // STANDARD mode - raw JSON
             log(`✏️ Writing ${key} = ${value}`, 'success');
         }
 
