@@ -510,6 +510,16 @@
             background: #ef4444 !important;
             pointer-events: none;
         }
+        .btn-power {
+            min-width: 90px;
+            font-size: 0.8rem;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: 700;
+            transition: background 0.2s;
+        }
+        .btn-power.power-on  { background: #10b981; color: #fff; }
+        .btn-power.power-off { background: #ef4444; color: #fff; }
 
         /* ── Param-row flash on live update ──────────────── */
         @keyframes flash-row {
@@ -825,6 +835,10 @@
                                 <div class="info-label">Active Work Mode</div>
                                 <span id="activeWorkMode" class="badge badge-blue">—</span>
                             </div>
+                            <div class="info-item" style="grid-column: 1 / -1; display:flex; justify-content:space-between; align-items:center;">
+                                <div class="info-label">Device Power</div>
+                                <button id="powerToggleBtn" class="btn btn-power" onclick="toggleDevicePower(this)">— / —</button>
+                            </div>
                         </div>
                     </div>
 
@@ -853,6 +867,14 @@
                             <div class="param-item">
                                 <span class="param-label">Temperature</span>
                                 <span class="param-value" id="temperature">--<span class="param-unit">°C</span></span>
+                            </div>
+                            <div class="param-item">
+                                <span class="param-label">Charged Today</span>
+                                <span class="param-value" id="battChargeToday">--<span class="param-unit">kWh</span></span>
+                            </div>
+                            <div class="param-item">
+                                <span class="param-label">Discharged Today</span>
+                                <span class="param-value" id="battDischargeToday">--<span class="param-unit">kWh</span></span>
                             </div>
                         </div>
                     </div>
@@ -883,6 +905,14 @@
                                 <span class="param-label">Total PV Power</span>
                                 <span class="param-value" id="pvPower">--<span class="param-unit">W</span></span>
                             </div>
+                            <div class="param-item">
+                                <span class="param-label">Output Today</span>
+                                <span class="param-value" id="pvToday">--<span class="param-unit">kWh</span></span>
+                            </div>
+                            <div class="param-item">
+                                <span class="param-label">Accumulated Output</span>
+                                <span class="param-value" id="pvAccum">--<span class="param-unit">kWh</span></span>
+                            </div>
                         </div>
                     </div>
 
@@ -907,6 +937,14 @@
                             <div class="param-item">
                                 <span class="param-label">Active Power</span>
                                 <span class="param-value" id="activePower">--<span class="param-unit">W</span></span>
+                            </div>
+                            <div class="param-item">
+                                <span class="param-label">Purchased Today</span>
+                                <span class="param-value" id="powerPurchased">--<span class="param-unit">kWh</span></span>
+                            </div>
+                            <div class="param-item">
+                                <span class="param-label">Sold Today</span>
+                                <span class="param-value" id="powerSold">--<span class="param-unit">kWh</span></span>
                             </div>
                         </div>
                     </div>
@@ -1817,11 +1855,30 @@
                         'P045': { elem: 'gridCurrent' },
                         'P053': { elem: 'gridFrequency' },
                         'P055': { elem: 'activePower', hist: 'gridPower' },
+                        'P638': { elem: 'powerPurchased' },
+                        'P639': { elem: 'powerSold' },
+                        'P075': { elem: 'battChargeToday' },
+                        'P076': { elem: 'battDischargeToday' },
+                        'P061': { elem: 'pvToday' },
+                        'P062': { elem: 'pvAccum' },
                         'P002': { elem: 'serialNumber' },
                         'B002': { elem: 'serialNumber' },
                         'P006': { elem: 'firmware' },
                         'L023': { elem: 'firmware' }
                     };
+
+                    // Power on/off toggle button
+                    if (key === 'P500') {
+                        const btn = document.getElementById('powerToggleBtn');
+                        if (btn) {
+                            const isOn = parseInt(value) === 1;
+                            btn.textContent = isOn ? '⏻ ON' : '⏻ OFF';
+                            btn.classList.toggle('power-on',  isOn);
+                            btn.classList.toggle('power-off', !isOn);
+                            btn.dataset.powerState = isOn ? '1' : '0';
+                        }
+                        return;
+                    }
 
                     if (mapping[key]) {
                         const elem = document.getElementById(mapping[key].elem);
@@ -2003,8 +2060,12 @@
 
             const liveKeys = [
                 'B034', 'B035', 'B043', 'P069', 'P070',
-                'P024', 'P025', 'P026', 'P027', 'P060',
-                'P044', 'P045', 'P053', 'P055'
+                'P024', 'P025', 'P026', 'P027',
+                'P060', 'P061', 'P062',
+                'P044', 'P045', 'P053', 'P055',
+                'P638', 'P639',
+                'P075', 'P076',
+                'P500'
             ];
 
             await sendCommand({
@@ -2139,7 +2200,7 @@
             log('📖 Reading config parameters…');
             await sendCommand({
                 cmd: 'local', act: '1',
-                tid: Math.floor(Math.random() * 100000).toString(),
+                tid: '10001',
                 data: ['P651',
                        'L005','L006','L007','L008','L009','L010',
                        'L011','L012','L013','L014','L015','L016',
@@ -2268,6 +2329,23 @@
                 { k: 'L018', v: parseInt(document.getElementById('dischargePowerSlider').value) }
             ]);
             setButtonState(btn, ok ? 'success' : 'error');
+        }
+
+        async function toggleDevicePower(btn) {
+            if (!device?.gatt?.connected) { log('❌ Not connected', 'error'); return; }
+            const currentState = parseInt(btn.dataset.powerState ?? '1');
+            const newState = currentState === 1 ? 0 : 1;
+            setButtonState(btn, 'loading');
+            const ok = await writeParameter('P500', newState);
+            setButtonState(btn, ok ? 'success' : 'error');
+            if (ok) {
+                btn.dataset.powerState = String(newState);
+                const isOn = newState === 1;
+                btn.textContent = isOn ? '⏻ ON' : '⏻ OFF';
+                btn.classList.toggle('power-on',  isOn);
+                btn.classList.toggle('power-off', !isOn);
+                log(`⏻ Device powered ${isOn ? 'ON' : 'OFF'}`, isOn ? 'success' : 'warning');
+            }
         }
 
         function updateSliderValue(elementId, value, unit) {
