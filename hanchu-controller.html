@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hanchu BLE Controller</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ccc;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.connected {
+            background: #10b981;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f3f4f6;
+        }
+
+        .card-header h2 {
+            font-size: 18px;
+            color: #333;
+        }
+
+        .card-icon {
+            font-size: 24px;
+        }
+
+        .param-group {
+            margin-bottom: 20px;
+        }
+
+        .param-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: #f9fafb;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .param-label {
+            font-weight: 500;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .param-value {
+            font-weight: 700;
+            color: #1f2937;
+            font-size: 16px;
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+
+        .param-unit {
+            color: #9ca3af;
+            font-size: 13px;
+            margin-left: 4px;
+        }
+
+        .control-slider {
+            margin-bottom: 15px;
+        }
+
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .slider-label {
+            font-size: 14px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .slider-value {
+            font-size: 14px;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #e5e7eb;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            border: none;
+        }
+
+        .log-container {
+            background: #1f2937;
+            padding: 16px;
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 12px;
+        }
+
+        .log-entry {
+            color: #d1d5db;
+            margin-bottom: 4px;
+        }
+
+        .log-entry.success {
+            color: #10b981;
+        }
+
+        .log-entry.error {
+            color: #ef4444;
+        }
+
+        .log-entry.info {
+            color: #3b82f6;
+        }
+
+        .device-info {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .info-item {
+            background: #f9fafb;
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        .info-label {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 4px;
+        }
+
+        .info-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1f2937;
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-green {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-orange {
+            background: #fed7aa;
+            color: #92400e;
+        }
+
+        .badge-red {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .badge-blue {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            background: white;
+            padding: 10px;
+            border-radius: 12px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-weight: 600;
+            color: #6b7280;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 20px;
+        }
+
+        .export-section {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            padding: 15px;
+            background: #f9fafb;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 26px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(24px);
+        }
+
+        .data-point {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+            margin: 10px 0;
+        }
+
+        .trend {
+            font-size: 12px;
+            color: #10b981;
+        }
+
+        .trend.down {
+            color: #ef4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>
+                <span style="font-size: 32px;">⚡</span>
+                Hanchu BLE Controller
+            </h1>
+            <div class="status">
+                <div class="status-indicator" id="statusIndicator"></div>
+                <span id="statusText">Disconnected</span>
+                <div style="flex: 1;"></div>
+                
+                <label class="toggle-switch" style="display: none;" id="autoRefreshToggle">
+                    <input type="checkbox" id="autoRefreshCheckbox" onchange="toggleAutoRefresh()">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span style="display: none; margin-right: 15px;" id="autoRefreshLabel">Auto-Refresh</span>
+                
+                <button class="btn btn-primary" id="connectBtn" onclick="connectDevice()">
+                    🔍 Scan & Connect
+                </button>
+                <button class="btn btn-danger" id="disconnectBtn" onclick="disconnectDevice()" style="display: none;">
+                    🔌 Disconnect
+                </button>
+            </div>
+        </div>
+
+        <div id="connectedView" style="display: none;">
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('monitor')">📊 Monitor</button>
+                <button class="tab" onclick="switchTab('control')">🎛️ Control</button>
+                <button class="tab" onclick="switchTab('analytics')">📈 Analytics</button>
+                <button class="tab" onclick="switchTab('settings')">⚙️ Settings</button>
+            </div>
+
+            <!-- Monitor Tab -->
+            <div id="monitorTab" class="tab-content active">
+                <div class="grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon">📱</span>
+                            <h2>Device Information</h2>
+                        </div>
+                        <div class="device-info">
+                            <div class="info-item">
+                                <div class="info-label">Device Name</div>
+                                <div class="info-value" id="deviceName">-</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Device Type</div>
+                                <div class="info-value" id="deviceType">-</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Serial Number</div>
+                                <div class="info-value" id="serialNumber">-</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Firmware</div>
+                                <div class="info-value" id="firmware">-</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon">🔋</span>
+                            <h2>Battery Status</h2>
+                        </div>
+                        <div class="param-group">
+                            <div class="param-item">
+                                <span class="param-label">State of Charge</span>
+                                <span class="param-value" id="soc">--<span class="param-unit">%</span></span>
+                            </div>
+                            <div class="param-item">
+                                <span class="param-label">Voltage</span>
+                                <span class="param-value" id="voltage">--<span class="param-unit">V</span></span>
+                            </div>
+                            <div class="param-item">
+                                <span class="param-label">Current</span>
+                                <span class="param-value" id="current">--<span class="param-unit">A</span></span>
+                            </div>
+                            <div class="param-item">
+                                <span class="param-label">Power</span>
+                                <span class="param-value" id="power">--<span class="param-unit">W</span></span>
+                            </div>
+                            <div class="param-item">
+                                <span class="param-label">Temperature</span>
+                                <span class="param-value" id="temperature">--<span class="param-unit">°C</span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon">☀️</span>
+                            <h2>Solar PV</h2>
+                        </div>
+                        <div class="param-group">
+                            <div class="param-item">
+                                <span class="param-label">PV1 Voltage</span>
+                                <span class="param-value" id="pv1Voltage">--<span class="param-unit">V</span></span>
+                            </div>
+                            <div class="param-item">
+                                <span class="param-label">PV1 Current</span>
+                                <span class="param-value" id="pv1Current">--<span class="param-unit">A</span></span>
+                            </div>
+                            <div class="param-item">
+                                <span class="param-label">PV2 Voltage</span>
+                                <span class="param-value" id="pv2Voltage">--<span class="param-unit">V</span></span>
+                            </div>
+                            <div class="param-item">
+                                <span class="param-label">PV2 Current</span>
+                                <span class="param-value" id="pv2Current">--<span class="param-unit">A</span></span>
+                            </div>
+                            <div class="param-item">
+                                <span class="param-label">Total PV Power</span>
+                                <span class="param-value" id="pvPower">--<span class="param-unit">W</span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon">🔌</span>
+                            <h2>Grid</h2>
+                        </div>
+                        <div class="param-group">
+                            <div class="param-item">
+                                <span class="param-label">Grid Voltage</span>
+                                <span class="param-value" id="gridVoltage">--<span class="param-unit">V</span></span>
+                            </div>
+                            <div class="param-item">
+                                <span class="param-label">Grid Current</span>
+                                <span class="param-value" id="gridCurrent">--<span class="param-unit">A</span></span>
+                            </div>
+                            <div class="param-item">
+                                <span class="param-label">Grid Frequency</span>
+                                <span class="param-value" id="gridFrequency">--<span class="param-unit">Hz</span></span>
+                            </div>
+                            <div class="param-item">
+                                <span class="param-label">Active Power</span>
+                                <span class="param-value" id="activePower">--<span class="param-unit">W</span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon">📝</span>
+                        <h2>Activity Log</h2>
+                    </div>
+                    <div class="log-container" id="logContainer"></div>
+                </div>
+            </div>
+
+            <!-- Control Tab -->
+            <div id="controlTab" class="tab-content">
+                <div class="grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon">🎛️</span>
+                            <h2>Battery Controls</h2>
+                        </div>
+                        <div class="control-slider">
+                            <div class="slider-header">
+                                <span class="slider-label">Charge SOC Limit</span>
+                                <span class="slider-value" id="chargeSocValue">90%</span>
+                            </div>
+                            <input type="range" min="50" max="100" value="90" id="chargeSocSlider" 
+                                   oninput="updateSliderValue('chargeSocValue', this.value, '%')">
+                        </div>
+                        <div class="control-slider">
+                            <div class="slider-header">
+                                <span class="slider-label">Discharge SOC Limit</span>
+                                <span class="slider-value" id="dischargeSocValue">10%</span>
+                            </div>
+                            <input type="range" min="5" max="50" value="10" id="dischargeSocSlider"
+                                   oninput="updateSliderValue('dischargeSocValue', this.value, '%')">
+                        </div>
+                        <button class="btn btn-primary" onclick="writeParameter('P647', document.getElementById('chargeSocSlider').value)">
+                            Apply Charge Limit
+                        </button>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon">⚙️</span>
+                            <h2>Power Limits</h2>
+                        </div>
+                        <div class="control-slider">
+                            <div class="slider-header">
+                                <span class="slider-label">Charge Power Limit</span>
+                                <span class="slider-value" id="chargePowerValue">5000W</span>
+                            </div>
+                            <input type="range" min="0" max="5000" step="100" value="5000" id="chargePowerSlider"
+                                   oninput="updateSliderValue('chargePowerValue', this.value, 'W')">
+                        </div>
+                        <div class="control-slider">
+                            <div class="slider-header">
+                                <span class="slider-label">Discharge Power Limit</span>
+                                <span class="slider-value" id="dischargePowerValue">5000W</span>
+                            </div>
+                            <input type="range" min="0" max="5000" step="100" value="5000" id="dischargePowerSlider"
+                                   oninput="updateSliderValue('dischargePowerValue', this.value, 'W')">
+                        </div>
+                        <button class="btn btn-primary" onclick="writePowerLimits()">
+                            Apply Power Limits
+                        </button>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon">🔄</span>
+                            <h2>Work Mode</h2>
+                        </div>
+                        <div class="quick-actions">
+                            <button class="btn btn-secondary" onclick="setWorkMode(0)">
+                                Self-Use
+                            </button>
+                            <button class="btn btn-secondary" onclick="setWorkMode(1)">
+                                Feed-In
+                            </button>
+                            <button class="btn btn-secondary" onclick="setWorkMode(2)">
+                                Backup
+                            </button>
+                        </div>
+                        <div style="margin-top: 15px;">
+                            <button class="btn btn-primary" onclick="refreshAllData()">
+                                🔄 Refresh All Data
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics Tab -->
+            <div id="analyticsTab" class="tab-content">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon">📈</span>
+                        <h2>Historical Data</h2>
+                    </div>
+                    <div class="export-section">
+                        <button class="btn btn-primary" onclick="exportToCSV()">
+                            📥 Export to CSV
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportToJSON()">
+                            📄 Export to JSON
+                        </button>
+                        <button class="btn btn-danger" onclick="clearHistory()">
+                            🗑️ Clear History
+                        </button>
+                        <div style="flex: 1;"></div>
+                        <span style="color: #6b7280; font-size: 14px;">
+                            Data points: <strong id="dataPointCount">0</strong>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon">🔋</span>
+                            <h2>Battery Metrics</h2>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="batteryChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon">☀️</span>
+                            <h2>Solar Generation</h2>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="solarChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon">🔌</span>
+                            <h2>Grid Power</h2>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="gridChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon">🌡️</span>
+                            <h2>Temperature</h2>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="temperatureChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Tab -->
+            <div id="settingsTab" class="tab-content">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon">⚙️</span>
+                        <h2>Advanced Settings</h2>
+                    </div>
+                    <p style="color: #6b7280; margin-bottom: 20px;">
+                        Advanced parameter configuration and diagnostics
+                    </p>
+                    <div class="quick-actions">
+                        <button class="btn btn-secondary" onclick="readParameter('L023')">
+                            Read Logger Version
+                        </button>
+                        <button class="btn btn-secondary" onclick="readParameter('P006')">
+                            Read Inverter Version
+                        </button>
+                        <button class="btn btn-secondary" onclick="readParameter('B002')">
+                            Read Battery SN
+                        </button>
+                        <button class="btn btn-secondary" onclick="readParameter('P002')">
+                            Read Inverter SN
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // BLE Service and Characteristic UUIDs
+        const SERVICE_UUID = '0000ff00-0000-1000-8000-00805f9b34fb';
+        const READ_CHAR_UUID = '0000ff01-0000-1000-8000-00805f9b34fb';
+        const WRITE_CHAR_UUID = '0000ff02-0000-1000-8000-00805f9b34fb';
+
+        // Static AES key (same as Swift code)
+        const STATIC_KEY = '48435F4553535F4C4F474745525F4B59'; // HEX string
+
+        // Global state
+        let device = null;
+        let readCharacteristic = null;
+        let writeCharacteristic = null;
+        let dynamicKey = null;
+        let randomFix = null;
+        let autoRefreshInterval = null;
+        
+        // Historical data storage
+        let historicalData = {
+            timestamps: [],
+            soc: [],
+            voltage: [],
+            current: [],
+            power: [],
+            temperature: [],
+            pvPower: [],
+            gridPower: []
+        };
+        
+        // Charts
+        let batteryChart = null;
+        let solarChart = null;
+        let gridChart = null;
+        let temperatureChart = null;
+
+        // AES Encryption Helper
+        const AESHelper = {
+            // Generate dynamic key from random fix
+            generateDynamicKey(randomFix) {
+                const randomFixStr = randomFix.toString().padStart(6, '0');
+                const keyBytes = CryptoJS.enc.Hex.parse(STATIC_KEY);
+                const fixBytes = CryptoJS.enc.Utf8.parse(randomFixStr);
+                
+                // XOR operation (simplified - should match Swift logic)
+                let result = [];
+                for (let i = 0; i < 16; i++) {
+                    result.push(keyBytes.words[i >> 2] ^ (fixBytes.words[(i % 6) >> 2] || 0));
+                }
+                
+                dynamicKey = CryptoJS.lib.WordArray.create(result);
+                log(`🔑 Generated dynamic key`);
+                return dynamicKey;
+            },
+
+            // Encrypt data with dynamic key using AES-128-ECB
+            encrypt(data) {
+                if (!dynamicKey) {
+                    log('❌ No dynamic key!', 'error');
+                    return null;
+                }
+
+                const encrypted = CryptoJS.AES.encrypt(
+                    CryptoJS.lib.WordArray.create(data),
+                    dynamicKey,
+                    {
+                        mode: CryptoJS.mode.ECB,
+                        padding: CryptoJS.pad.Pkcs7
+                    }
+                );
+
+                return new Uint8Array(encrypted.ciphertext.words.flatMap(w => [
+                    (w >> 24) & 0xFF,
+                    (w >> 16) & 0xFF,
+                    (w >> 8) & 0xFF,
+                    w & 0xFF
+                ]));
+            },
+
+            // Decrypt data with dynamic key using AES-128-ECB
+            decrypt(encryptedData) {
+                if (!dynamicKey) {
+                    log('❌ No dynamic key!', 'error');
+                    return null;
+                }
+
+                try {
+                    // Convert Uint8Array to WordArray
+                    const words = [];
+                    for (let i = 0; i < encryptedData.length; i += 4) {
+                        words.push(
+                            (encryptedData[i] << 24) |
+                            (encryptedData[i + 1] << 16) |
+                            (encryptedData[i + 2] << 8) |
+                            encryptedData[i + 3]
+                        );
+                    }
+                    const cipherParams = CryptoJS.lib.CipherParams.create({
+                        ciphertext: CryptoJS.lib.WordArray.create(words)
+                    });
+
+                    const decrypted = CryptoJS.AES.decrypt(
+                        cipherParams,
+                        dynamicKey,
+                        {
+                            mode: CryptoJS.mode.ECB,
+                            padding: CryptoJS.pad.Pkcs7
+                        }
+                    );
+
+                    const decryptedBytes = [];
+                    for (let i = 0; i < decrypted.sigBytes; i++) {
+                        decryptedBytes.push((decrypted.words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xFF);
+                    }
+
+                    return new Uint8Array(decryptedBytes);
+                } catch (error) {
+                    log(`❌ Decryption error: ${error.message}`, 'error');
+                    return null;
+                }
+            }
+        };
+
+        function log(message, type = 'info') {
+            const logContainer = document.getElementById('logContainer');
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${timestamp}] ${message}`;
+            logContainer.insertBefore(entry, logContainer.firstChild);
+            
+            while (logContainer.children.length > 100) {
+                logContainer.removeChild(logContainer.lastChild);
+            }
+        }
+
+        async function connectDevice() {
+            try {
+                log('🔍 Scanning for Hanchu devices...');
+                
+                device = await navigator.bluetooth.requestDevice({
+                    filters: [
+                        { namePrefix: 'HC:' }
+                    ],
+                    optionalServices: [SERVICE_UUID]
+                });
+
+                log(`📱 Found device: ${device.name}`, 'success');
+
+                const server = await device.gatt.connect();
+                log('🔗 Connected to GATT server', 'success');
+
+                const service = await server.getPrimaryService(SERVICE_UUID);
+                log('✅ Got BLE service', 'success');
+
+                readCharacteristic = await service.getCharacteristic(READ_CHAR_UUID);
+                writeCharacteristic = await service.getCharacteristic(WRITE_CHAR_UUID);
+                log('✅ Got characteristics', 'success');
+
+                await readCharacteristic.startNotifications();
+                readCharacteristic.addEventListener('characteristicvaluechanged', handleNotification);
+                log('🔔 Subscribed to notifications', 'success');
+
+                // Update UI
+                document.getElementById('statusIndicator').classList.add('connected');
+                document.getElementById('statusText').textContent = `Connected to ${device.name}`;
+                document.getElementById('connectBtn').style.display = 'none';
+                document.getElementById('disconnectBtn').style.display = 'inline-flex';
+                document.getElementById('autoRefreshToggle').style.display = 'inline-block';
+                document.getElementById('autoRefreshLabel').style.display = 'inline-block';
+                document.getElementById('connectedView').style.display = 'block';
+                document.getElementById('deviceName').textContent = device.name;
+
+                const deviceType = device.name.includes('L110') ? 'Inverter' : 
+                                 device.name.includes('L101') ? 'Battery' : 'Unknown';
+                document.getElementById('deviceType').textContent = deviceType;
+
+                await initializeConnection();
+                initializeCharts();
+
+            } catch (error) {
+                log(`❌ Connection failed: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+
+        function disconnectDevice() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+            }
+
+            if (device && device.gatt.connected) {
+                device.gatt.disconnect();
+                log('🔌 Disconnected', 'info');
+            }
+            
+            device = null;
+            readCharacteristic = null;
+            writeCharacteristic = null;
+            dynamicKey = null;
+            
+            document.getElementById('statusIndicator').classList.remove('connected');
+            document.getElementById('statusText').textContent = 'Disconnected';
+            document.getElementById('connectBtn').style.display = 'inline-flex';
+            document.getElementById('disconnectBtn').style.display = 'none';
+            document.getElementById('autoRefreshToggle').style.display = 'none';
+            document.getElementById('autoRefreshLabel').style.display = 'none';
+            document.getElementById('connectedView').style.display = 'none';
+            document.getElementById('autoRefreshCheckbox').checked = false;
+        }
+
+        async function initializeConnection() {
+            // Generate random fix
+            randomFix = Math.floor(Math.random() * 1000000);
+            log(`🔑 Generated random fix: ${randomFix}`);
+
+            // Build random fix packet (7 bytes, starts with 0x05)
+            const randomFixPacket = new Uint8Array(7);
+            randomFixPacket[0] = 0x05;
+            randomFixPacket[1] = (randomFix >> 16) & 0xFF;
+            randomFixPacket[2] = (randomFix >> 8) & 0xFF;
+            randomFixPacket[3] = randomFix & 0xFF;
+            randomFixPacket[4] = 0x00;
+            randomFixPacket[5] = 0x00;
+            randomFixPacket[6] = 0x00;
+
+            await writeCharacteristic.writeValue(randomFixPacket);
+            log('📤 Sent random fix packet');
+
+            // Generate dynamic key
+            AESHelper.generateDynamicKey(randomFix);
+            
+            // Wait for key exchange, then read initial data
+            setTimeout(() => {
+                refreshAllData();
+            }, 1000);
+        }
+
+        function handleNotification(event) {
+            const value = event.target.value;
+            const data = new Uint8Array(value.buffer);
+            
+            log(`📨 Received ${data.length} bytes`);
+            
+            try {
+                // Decrypt the response
+                const decrypted = AESHelper.decrypt(data);
+                if (!decrypted) {
+                    log('❌ Decryption failed', 'error');
+                    return;
+                }
+
+                // Check if LOCAL mode (starts with 0x03)
+                let jsonString;
+                if (decrypted[0] === 0x03) {
+                    // LOCAL MODE - extract JSON from packet
+                    const dataLength = decrypted[4] | (decrypted[5] << 8);
+                    const jsonBytes = decrypted.slice(6, 6 + dataLength);
+                    jsonString = new TextDecoder().decode(jsonBytes);
+                    log('📦 LOCAL mode packet');
+                } else {
+                    // STANDARD MODE - raw JSON
+                    jsonString = new TextDecoder().decode(decrypted);
+                    log('📄 STANDARD mode packet');
+                }
+
+                log(`📄 JSON: ${jsonString.substring(0, 100)}...`);
+                
+                const parsed = JSON.parse(jsonString);
+                updateUIWithData(parsed);
+
+            } catch (error) {
+                log(`❌ Parse error: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+
+        function updateUIWithData(data) {
+            if (data.data && Array.isArray(data.data)) {
+                const timestamp = new Date();
+                let updated = false;
+
+                data.data.forEach(item => {
+                    const key = item.k;
+                    const value = item.v;
+                    
+                    // Map to UI and historical data
+                    const mapping = {
+                        'soc': { elem: 'soc', hist: 'soc' },
+                        'B034': { elem: 'soc', hist: 'soc' },
+                        'B035': { elem: 'voltage', hist: 'voltage' },
+                        'B043': { elem: 'current', hist: 'current' },
+                        'P069': { elem: 'power', hist: 'power' },
+                        'P070': { elem: 'temperature', hist: 'temperature' },
+                        'P024': { elem: 'pv1Voltage' },
+                        'P025': { elem: 'pv1Current' },
+                        'P026': { elem: 'pv2Voltage' },
+                        'P027': { elem: 'pv2Current' },
+                        'P060': { elem: 'pvPower', hist: 'pvPower' },
+                        'P044': { elem: 'gridVoltage' },
+                        'P045': { elem: 'gridCurrent' },
+                        'P053': { elem: 'gridFrequency' },
+                        'P055': { elem: 'activePower', hist: 'gridPower' },
+                        'P002': { elem: 'serialNumber' },
+                        'B002': { elem: 'serialNumber' },
+                        'P006': { elem: 'firmware' },
+                        'L023': { elem: 'firmware' }
+                    };
+
+                    if (mapping[key]) {
+                        const elem = document.getElementById(mapping[key].elem);
+                        if (elem) {
+                            elem.textContent = typeof value === 'number' ? value.toFixed(2) : value;
+                        }
+
+                        // Store historical data
+                        if (mapping[key].hist && typeof value === 'number') {
+                            if (!updated) {
+                                historicalData.timestamps.push(timestamp);
+                                updated = true;
+                            }
+                            historicalData[mapping[key].hist].push(value);
+                        }
+                    }
+                });
+
+                // Limit historical data to last 100 points
+                if (historicalData.timestamps.length > 100) {
+                    Object.keys(historicalData).forEach(key => {
+                        historicalData[key] = historicalData[key].slice(-100);
+                    });
+                }
+
+                // Update charts
+                updateCharts();
+                document.getElementById('dataPointCount').textContent = historicalData.timestamps.length;
+            }
+        }
+
+        async function sendCommand(command, isLocalMode = true) {
+            if (!writeCharacteristic) {
+                log('❌ Not connected', 'error');
+                return;
+            }
+
+            try {
+                const jsonString = JSON.stringify(command);
+                const jsonData = new TextEncoder().encode(jsonString);
+                
+                let dataToEncrypt;
+
+                if (isLocalMode) {
+                    // LOCAL MODE - add packet framing
+                    const packet = new Uint8Array(6 + jsonData.length);
+                    packet[0] = 0x03; // Command type
+                    packet[1] = 0x00; // Packet type (0 = last/only)
+                    packet[2] = 0x00; // Index low
+                    packet[3] = 0x00; // Index high
+                    packet[4] = jsonData.length & 0xFF; // Length low
+                    packet[5] = (jsonData.length >> 8) & 0xFF; // Length high
+                    packet.set(jsonData, 6);
+                    dataToEncrypt = packet;
+                    log('📦 Using LOCAL mode (framed packet)');
+                } else {
+                    // STANDARD MODE - raw JSON
+                    dataToEncrypt = jsonData;
+                    log('📄 Using STANDARD mode (raw JSON)');
+                }
+
+                // Encrypt and send
+                const encrypted = AESHelper.encrypt(dataToEncrypt);
+                if (!encrypted) {
+                    log('❌ Encryption failed', 'error');
+                    return;
+                }
+
+                await writeCharacteristic.writeValue(encrypted);
+                log(`📤 Sent ${encrypted.length} bytes`, 'success');
+                
+            } catch (error) {
+                log(`❌ Send failed: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+
+        async function readParameter(key) {
+            const command = {
+                cmd: 'local',
+                act: '1', // Read
+                tid: Math.floor(Math.random() * 100000).toString(),
+                data: [{ k: key }]
+            };
+
+            await sendCommand(command, true); // LOCAL mode
+            log(`📖 Reading: ${key}`);
+        }
+
+        async function writeParameter(key, value) {
+            const command = {
+                cmd: 'local',
+                act: '3', // Write
+                tid: Math.floor(Math.random() * 100000).toString(),
+                data: [{ k: key, v: value }]
+            };
+
+            await sendCommand(command, true); // LOCAL mode
+            log(`✏️ Writing ${key} = ${value}`, 'success');
+        }
+
+        async function refreshAllData() {
+            if (!device || !device.gatt.connected) return;
+
+            log('🔄 Refreshing all data...');
+            
+            const keys = [
+                'soc', 'B034', 'B035', 'B043', 'P069', 'P070',
+                'P024', 'P025', 'P026', 'P027', 'P060',
+                'P044', 'P045', 'P053', 'P055',
+                'P002', 'B002', 'P006', 'L023'
+            ];
+            
+            for (const key of keys) {
+                await readParameter(key);
+                await new Promise(resolve => setTimeout(resolve, 150));
+            }
+        }
+
+        function toggleAutoRefresh() {
+            const enabled = document.getElementById('autoRefreshCheckbox').checked;
+            
+            if (enabled) {
+                log('⏰ Auto-refresh enabled (5s interval)', 'success');
+                autoRefreshInterval = setInterval(refreshAllData, 5000);
+            } else {
+                log('⏸️ Auto-refresh disabled');
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                    autoRefreshInterval = null;
+                }
+            }
+        }
+
+        function setWorkMode(mode) {
+            writeParameter('L019', mode.toString());
+            const modes = ['Self-Use', 'Feed-In', 'Backup'];
+            log(`🔄 Setting work mode: ${modes[mode]}`);
+        }
+
+        function writePowerLimits() {
+            const chargeLimit = document.getElementById('chargePowerSlider').value;
+            const dischargeLimit = document.getElementById('dischargePowerSlider').value;
+            
+            writeParameter('L017', parseInt(chargeLimit));
+            setTimeout(() => writeParameter('L018', parseInt(dischargeLimit)), 250);
+        }
+
+        function updateSliderValue(elementId, value, unit) {
+            document.getElementById(elementId).textContent = value + unit;
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(tabName + 'Tab').classList.add('active');
+        }
+
+        // Chart functions
+        function initializeCharts() {
+            const chartConfig = {
+                type: 'line',
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: {
+                        legend: { display: true, position: 'top' }
+                    },
+                    scales: {
+                        x: { display: true },
+                        y: { display: true }
+                    }
+                }
+            };
+
+            // Battery Chart
+            batteryChart = new Chart(document.getElementById('batteryChart'), {
+                ...chartConfig,
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'SOC (%)',
+                        data: [],
+                        borderColor: '#10b981',
+                        backgroundColor: '#10b98120'
+                    }, {
+                        label: 'Voltage (V)',
+                        data: [],
+                        borderColor: '#3b82f6',
+                        backgroundColor: '#3b82f620'
+                    }]
+                }
+            });
+
+            // Solar Chart
+            solarChart = new Chart(document.getElementById('solarChart'), {
+                ...chartConfig,
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'PV Power (W)',
+                        data: [],
+                        borderColor: '#f59e0b',
+                        backgroundColor: '#f59e0b20'
+                    }]
+                }
+            });
+
+            // Grid Chart
+            gridChart = new Chart(document.getElementById('gridChart'), {
+                ...chartConfig,
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Grid Power (W)',
+                        data: [],
+                        borderColor: '#8b5cf6',
+                        backgroundColor: '#8b5cf620'
+                    }]
+                }
+            });
+
+            // Temperature Chart
+            temperatureChart = new Chart(document.getElementById('temperatureChart'), {
+                ...chartConfig,
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Temperature (°C)',
+                        data: [],
+                        borderColor: '#ef4444',
+                        backgroundColor: '#ef444420'
+                    }]
+                }
+            });
+        }
+
+        function updateCharts() {
+            if (!batteryChart) return;
+
+            const labels = historicalData.timestamps.map(t => t.toLocaleTimeString());
+
+            // Battery Chart
+            batteryChart.data.labels = labels;
+            batteryChart.data.datasets[0].data = historicalData.soc;
+            batteryChart.data.datasets[1].data = historicalData.voltage;
+            batteryChart.update('none');
+
+            // Solar Chart
+            solarChart.data.labels = labels;
+            solarChart.data.datasets[0].data = historicalData.pvPower;
+            solarChart.update('none');
+
+            // Grid Chart
+            gridChart.data.labels = labels;
+            gridChart.data.datasets[0].data = historicalData.gridPower;
+            gridChart.update('none');
+
+            // Temperature Chart
+            temperatureChart.data.labels = labels;
+            temperatureChart.data.datasets[0].data = historicalData.temperature;
+            temperatureChart.update('none');
+        }
+
+        function exportToCSV() {
+            const headers = ['Timestamp', 'SOC(%)', 'Voltage(V)', 'Current(A)', 'Power(W)', 'Temperature(°C)', 'PV_Power(W)', 'Grid_Power(W)'];
+            const rows = historicalData.timestamps.map((time, i) => [
+                time.toISOString(),
+                historicalData.soc[i] || '',
+                historicalData.voltage[i] || '',
+                historicalData.current[i] || '',
+                historicalData.power[i] || '',
+                historicalData.temperature[i] || '',
+                historicalData.pvPower[i] || '',
+                historicalData.gridPower[i] || ''
+            ]);
+
+            const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+            downloadFile(csv, 'hanchu-data.csv', 'text/csv');
+            log('📥 Exported to CSV', 'success');
+        }
+
+        function exportToJSON() {
+            const json = JSON.stringify(historicalData, null, 2);
+            downloadFile(json, 'hanchu-data.json', 'application/json');
+            log('📥 Exported to JSON', 'success');
+        }
+
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function clearHistory() {
+            if (!confirm('Clear all historical data?')) return;
+            
+            Object.keys(historicalData).forEach(key => {
+                historicalData[key] = [];
+            });
+            updateCharts();
+            document.getElementById('dataPointCount').textContent = '0';
+            log('🗑️ History cleared', 'info');
+        }
+
+        // Check Web Bluetooth support
+        if (!navigator.bluetooth) {
+            alert('⚠️ Web Bluetooth is not supported. Please use Chrome, Edge, or Opera.');
+        }
+    </script>
+</body>
+</html>
