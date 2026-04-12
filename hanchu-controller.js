@@ -195,8 +195,8 @@
                 document.getElementById('connectedView').style.display = 'block';
                 document.getElementById('deviceName').textContent = device.name;
 
-                const deviceType = device.name.includes('L110') ? 'Inverter' : 
-                                 device.name.includes('L101') ? 'Battery' : 'Unknown';
+                const deviceType = device.name.includes(P.DEVICE_TYPE_INVERTER) ? 'Inverter' : 
+                                 device.name.includes(P.DEVICE_TYPE_BATTERY) ? 'Battery' : 'Unknown';
                 document.getElementById('deviceType').textContent = deviceType;
 
                 await initializeConnection();
@@ -341,34 +341,34 @@
                     
                     // Map to UI and historical data
                     const mapping = {
-                        'P071': { elem: 'soc', hist: 'soc' },
-                        'B035': { elem: 'voltage', hist: 'voltage' },
-                        'B043': { elem: 'current', hist: 'current' },
-                        'P069': { elem: 'power', hist: 'power' },
-                        'P070': { elem: 'temperature', hist: 'temperature' },
-                        'P024': { elem: 'pv1Voltage' },
-                        'P025': { elem: 'pv1Current' },
-                        'P026': { elem: 'pv2Voltage' },
-                        'P027': { elem: 'pv2Current' },
-                        'P060': { elem: 'pvPower', hist: 'pvPower' },
-                        'P044': { elem: 'gridVoltage' },
-                        'P045': { elem: 'gridCurrent' },
-                        'P053': { elem: 'gridFrequency' },
-                        'P055': { elem: 'activePower', hist: 'gridPower' },
-                        'P638': { elem: 'powerPurchased' },
-                        'P639': { elem: 'powerSold' },
-                        'P075': { elem: 'battChargeToday' },
-                        'P076': { elem: 'battDischargeToday' },
-                        'P061': { elem: 'pvToday' },
-                        'P062': { elem: 'pvAccum' },
-                        'P002': { elem: 'serialNumber' },
-                        'B002': { elem: 'serialNumber' },
-                        'P006': { elem: 'firmware' },
-                        'L023': { elem: 'firmware' }
+                        [P.BATTERY_SOC]: { elem: 'soc', hist: 'soc' },
+                        [P.BATTERY_TERMINAL_VOLTAGE]: { elem: 'voltage', hist: 'voltage' },
+                        [P.BATTERY_CURRENT]: { elem: 'current', hist: 'current' },
+                        [P.BATTERY_POWER]: { elem: 'power', hist: 'power' },
+                        [P.BATTERY_TEMPERATURE]: { elem: 'temperature', hist: 'temperature' },
+                        [P.PV1_VOLTAGE]: { elem: 'pv1Voltage' },
+                        [P.PV1_CURRENT]: { elem: 'pv1Current' },
+                        [P.PV2_VOLTAGE]: { elem: 'pv2Voltage' },
+                        [P.PV2_CURRENT]: { elem: 'pv2Current' },
+                        [P.PV_POWER_TOTAL]: { elem: 'pvPower', hist: 'pvPower' },
+                        [P.GRID_VOLTAGE]: { elem: 'gridVoltage' },
+                        [P.GRID_CURRENT]: { elem: 'gridCurrent' },
+                        [P.GRID_FREQUENCY]: { elem: 'gridFrequency' },
+                        [P.GRID_ACTIVE_POWER]: { elem: 'activePower', hist: 'gridPower' },
+                        [P.GRID_PURCHASED_TODAY]: { elem: 'powerPurchased' },
+                        [P.GRID_SOLD_TODAY]: { elem: 'powerSold' },
+                        [P.BATTERY_CHARGE_TODAY]: { elem: 'battChargeToday' },
+                        [P.BATTERY_DISCHARGE_TODAY]: { elem: 'battDischargeToday' },
+                        [P.PV_ENERGY_TODAY]: { elem: 'pvToday' },
+                        [P.PV_ENERGY_ACCUMULATED]: { elem: 'pvAccum' },
+                        [P.INVERTER_SERIAL]: { elem: 'serialNumber' },
+                        [P.BATTERY_SERIAL]: { elem: 'serialNumber' },
+                        [P.INVERTER_FIRMWARE]: { elem: 'firmware' },
+                        [P.BMS_FIRMWARE]: { elem: 'firmware' }
                     };
 
                     // Power on/off toggle button
-                    if (key === 'P500') {
+                    if (key === P.POWER_ON) {
                         const btn = document.getElementById('powerToggleBtn');
                         if (btn) {
                             const isOn = parseInt(value) === 1;
@@ -559,9 +559,9 @@
             await sendCommand({
                 cmd: 'local', act: '1',
                 tid: '10001',
-                data: ['B034','B035','B043','P069','P070',
-                       'P024','P025','P026','P027','P060',
-                       'P044','P045','P053','P055'].map(k => ({ k }))
+                data: [P.BMS_SOC,P.BATTERY_TERMINAL_VOLTAGE,P.BATTERY_CURRENT,P.BATTERY_POWER,P.BATTERY_TEMPERATURE,
+                       P.PV1_VOLTAGE,P.PV1_CURRENT,P.PV2_VOLTAGE,P.PV2_CURRENT,P.PV_POWER_TOTAL,
+                       P.GRID_VOLTAGE,P.GRID_CURRENT,P.GRID_FREQUENCY,P.GRID_ACTIVE_POWER].map(k => ({ k }))
             }, false);
         }
 
@@ -571,7 +571,7 @@
             await sendCommand({
                 cmd: 'local', act: '1',
                 tid: '10001',
-                data: ['P638','P639','P075','P076','P061','P062','P500'].map(k => ({ k }))
+                data: [P.GRID_PURCHASED_TODAY,P.GRID_SOLD_TODAY,P.BATTERY_CHARGE_TODAY,P.BATTERY_DISCHARGE_TODAY,P.PV_ENERGY_TODAY,P.PV_ENERGY_ACCUMULATED,P.POWER_ON].map(k => ({ k }))
             }, false);
         }
 
@@ -581,7 +581,7 @@
                 cmd: 'local',
                 act: '1',
                 tid: '10001',
-                data: ['P002', 'B002', 'P006', 'L023', 'P651'].map(k => ({ k }))
+                data: [P.INVERTER_SERIAL, P.BATTERY_SERIAL, P.INVERTER_FIRMWARE, P.BMS_FIRMWARE, P.WORK_MODE].map(k => ({ k }))
             }, false);
         }
 
@@ -601,7 +601,7 @@
         }
 
         function setWorkMode(mode) {
-            writeParameter('P651', mode);
+            writeParameter(P.WORK_MODE, mode);
             const modes = ['Self-Consumption', 'Backup', 'User Defined', 'Off-Grid'];
             log(`🔄 Setting work mode: ${modes[mode]}`);
         }
@@ -700,10 +700,10 @@
             await sendCommand({
                 cmd: 'local', act: '1',
                 tid: '10001',
-                data: ['P651',
-                       'L005','L006','L007','L008','L009','L010',
-                       'L011','L012','L013','L014','L015','L016',
-                       'L017','L018','L074','P647','P648','P772'
+                data: [P.WORK_MODE,
+                       P.CHARGE_P1_START,P.CHARGE_P1_END,P.CHARGE_P2_START,P.CHARGE_P2_END,P.CHARGE_P3_START,P.CHARGE_P3_END,
+                       P.DISCHARGE_P1_START,P.DISCHARGE_P1_END,P.DISCHARGE_P2_START,P.DISCHARGE_P2_END,P.DISCHARGE_P3_START,P.DISCHARGE_P3_END,
+                       P.CHARGE_POWER_LIMIT,P.DISCHARGE_POWER_LIMIT,P.MAX_SOC_LIMIT,P.CHARGE_TO_SOC,P.DISCHARGE_TO_SOC,P.MIN_SOC_CUTOFF
                       ].map(k => ({ k }))
             }, false);
         }
@@ -716,7 +716,7 @@
             let touchedTimeInput = false;
 
             items.forEach(({ k, v }) => {
-                if (k === 'P651') {
+                if (k === P.WORK_MODE) {
                     const idx      = parseInt(v);
                     const modeKey  = modeMap[idx];
                     const names    = ['Self-Consumption', 'Backup', 'User Defined', 'Off-Grid'];
@@ -752,10 +752,10 @@
                 });
 
                 // Re-enable period card if device reports a non-zero period
-                if (['L007','L009','L011','L013','L015'].includes(k) && parseInt(v) > 0) {
-                    const cardMap = { L007:'card-p2', L009:'card-p3', L011:'card-p4', L013:'card-p5', L015:'card-p6' };
-                    const startMap = { L007:'ud-p2-start', L009:'ud-p3-start', L011:'ud-p4-start', L013:'ud-p5-start', L015:'ud-p6-start' };
-                    const endMap   = { L007:'ud-p2-end',   L009:'ud-p3-end',   L011:'ud-p4-end',   L013:'ud-p5-end',   L015:'ud-p6-end' };
+                if ([P.CHARGE_P2_START,P.CHARGE_P3_START,P.DISCHARGE_P1_START,P.DISCHARGE_P2_START,P.DISCHARGE_P3_START].includes(k) && parseInt(v) > 0) {
+                    const cardMap = { [P.CHARGE_P2_START]:'card-p2', [P.CHARGE_P3_START]:'card-p3', [P.DISCHARGE_P1_START]:'card-p4', [P.DISCHARGE_P2_START]:'card-p5', [P.DISCHARGE_P3_START]:'card-p6' };
+                    const startMap = { [P.CHARGE_P2_START]:'ud-p2-start', [P.CHARGE_P3_START]:'ud-p3-start', [P.DISCHARGE_P1_START]:'ud-p4-start', [P.DISCHARGE_P2_START]:'ud-p5-start', [P.DISCHARGE_P3_START]:'ud-p6-start' };
+                    const endMap   = { [P.CHARGE_P2_START]:'ud-p2-end',   [P.CHARGE_P3_START]:'ud-p3-end',   [P.DISCHARGE_P1_START]:'ud-p4-end',   [P.DISCHARGE_P2_START]:'ud-p5-end',   [P.DISCHARGE_P3_START]:'ud-p6-end' };
                     const card  = document.getElementById(cardMap[k]);
                     const startEl = document.getElementById(startMap[k]);
                     const endEl   = document.getElementById(endMap[k]);
@@ -809,7 +809,7 @@
             });
 
             // 1. Set work mode first and wait for confirmation
-            const modeOk = await writeParameter('P651', modeNum);
+            const modeOk = await writeParameter(P.WORK_MODE, modeNum);
 
             // 2. Send all mode-specific parameters in one batch
             const paramsOk = await writeParameterBatch(pairs);
@@ -825,8 +825,8 @@
         async function writePowerLimits(btn) {
             setButtonState(btn, 'loading');
             const ok = await writeParameterBatch([
-                { k: 'L017', v: parseInt(document.getElementById('chargePowerSlider').value) },
-                { k: 'L018', v: parseInt(document.getElementById('dischargePowerSlider').value) }
+                { k: P.CHARGE_POWER_LIMIT, v: parseInt(document.getElementById('chargePowerSlider').value) },
+                { k: P.DISCHARGE_POWER_LIMIT, v: parseInt(document.getElementById('dischargePowerSlider').value) }
             ]);
             setButtonState(btn, ok ? 'success' : 'error');
         }
@@ -836,7 +836,7 @@
             const currentState = parseInt(btn.dataset.powerState ?? '1');
             const newState = currentState === 1 ? 0 : 1;
             setButtonState(btn, 'loading');
-            const ok = await writeParameter('P500', newState);
+            const ok = await writeParameter(P.POWER_ON, newState);
             setButtonState(btn, ok ? 'success' : 'error');
             if (ok) {
                 btn.dataset.powerState = String(newState);
