@@ -1800,6 +1800,9 @@
                 } else {
                     // STANDARD MODE - raw JSON
                     jsonString = new TextDecoder().decode(decrypted);
+                    // Strip trailing null bytes / garbage that BLE padding can add
+                    const end = jsonString.lastIndexOf('}');
+                    if (end !== -1) jsonString = jsonString.substring(0, end + 1);
                     log('📄 STANDARD mode packet');
                 }
 
@@ -1883,7 +1886,7 @@
                     if (mapping[key]) {
                         const elem = document.getElementById(mapping[key].elem);
                         if (elem) {
-                            const display = typeof value === 'number' ? value.toFixed(2) : value;
+                            const display = (value == null) ? '--' : (typeof value === 'number' ? value.toFixed(2) : String(value));
                             if (elem.dataset.lastVal !== display) {
                                 elem.dataset.lastVal = display;
                                 const row = elem.closest('.param-item');
@@ -1995,7 +1998,7 @@
             const command = {
                 cmd: 'local',
                 act: '3', // Write
-                tid: Math.floor(Math.random() * 100000).toString(),
+                tid: '10001',
                 data: [{ k: key, v: value }]
             };
 
@@ -2032,7 +2035,7 @@
             await sendCommand({
                 cmd: 'local',
                 act: '3',
-                tid: Math.floor(Math.random() * 100000).toString(),
+                tid: '10001',
                 data: pairs
             }, false);
             log(`✏️ Batch writing ${pairs.length} parameters…`);
@@ -2054,30 +2057,26 @@
             }
         }
 
-        // Request live telemetry — split into two packets to stay within BLE MTU
+        // Alternate between two key sets each tick — only ONE command per tick,
+        // same as before, so the device is never waiting on two requests at once.
+        let _liveToggle = false;
+        const LIVE_KEYS_A = [
+            'B034', 'B035', 'B043', 'P069', 'P070',
+            'P024', 'P025', 'P026', 'P027', 'P060',
+            'P044', 'P045', 'P053', 'P055'
+        ];
+        const LIVE_KEYS_B = [
+            'P638', 'P639', 'P075', 'P076', 'P061', 'P062', 'P500'
+        ];
+
         async function refreshAllData() {
             if (!device || !device.gatt.connected) return;
-
-            // Batch 1: real-time power/sensor values (original set)
-            const liveKeys1 = [
-                'B034', 'B035', 'B043', 'P069', 'P070',
-                'P024', 'P025', 'P026', 'P027', 'P060',
-                'P044', 'P045', 'P053', 'P055'
-            ];
+            _liveToggle = !_liveToggle;
+            const keys = _liveToggle ? LIVE_KEYS_A : LIVE_KEYS_B;
             await sendCommand({
                 cmd: 'local', act: '1',
-                tid: Math.floor(Math.random() * 100000).toString(),
-                data: liveKeys1.map(k => ({ k }))
-            }, false);
-
-            // Batch 2: daily energy totals + device state (less critical)
-            const liveKeys2 = [
-                'P638', 'P639', 'P075', 'P076', 'P061', 'P062', 'P500'
-            ];
-            await sendCommand({
-                cmd: 'local', act: '1',
-                tid: Math.floor(Math.random() * 100000).toString(),
-                data: liveKeys2.map(k => ({ k }))
+                tid: '10001',
+                data: keys.map(k => ({ k }))
             }, false);
         }
 
