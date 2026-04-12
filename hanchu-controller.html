@@ -1184,7 +1184,7 @@
             const command = {
                 cmd: 'local',
                 act: '1', // Read
-                tid: Math.floor(Math.random() * 100000).toString(),
+                tid: '10001',
                 data: [{ k: key }]
             };
 
@@ -1196,7 +1196,7 @@
             const command = {
                 cmd: 'local',
                 act: '3', // Write
-                tid: Math.floor(Math.random() * 100000).toString(),
+                tid:  '10001',
                 data: [{ k: key, v: value }]
             };
 
