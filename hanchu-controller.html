@@ -459,6 +459,42 @@
             color: #ef4444;
         }
 
+        /* ── Button write-feedback states ───────────────── */
+        .btn-loading {
+            opacity: 0.75;
+            pointer-events: none;
+            cursor: not-allowed;
+        }
+        .btn-loading::after {
+            content: '';
+            display: inline-block;
+            width: 13px;
+            height: 13px;
+            border: 2px solid rgba(255,255,255,0.35);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+        .btn-write-success {
+            background: #10b981 !important;
+            pointer-events: none;
+        }
+        .btn-write-error {
+            background: #ef4444 !important;
+            pointer-events: none;
+        }
+
+        /* ── Param-row flash on live update ──────────────── */
+        @keyframes flash-row {
+            0%   { background: #d1fae5; }
+            100% { background: #f9fafb; }
+        }
+        .param-updated {
+            animation: flash-row 1.4s ease-out forwards;
+        }
+
         /* ── Config Tab ─────────────────────────────────── */
         .mode-selector {
             display: flex;
@@ -809,7 +845,7 @@
                             <input type="range" min="5" max="50" value="10" id="dischargeSocSlider"
                                    oninput="updateSliderValue('dischargeSocValue', this.value, '%')">
                         </div>
-                        <button class="btn btn-primary" onclick="writeParameter('P647', document.getElementById('chargeSocSlider').value)">
+                        <button class="btn btn-primary" onclick="writeParameter('P647', document.getElementById('chargeSocSlider').value).then(ok => setButtonState(this, ok ? 'success' : 'error')); setButtonState(this, 'loading')">
                             Apply Charge Limit
                         </button>
                     </div>
@@ -835,7 +871,7 @@
                             <input type="range" min="0" max="5000" step="100" value="5000" id="dischargePowerSlider"
                                    oninput="updateSliderValue('dischargePowerValue', this.value, 'W')">
                         </div>
-                        <button class="btn btn-primary" onclick="writePowerLimits()">
+                        <button class="btn btn-primary" onclick="writePowerLimits(this)">
                             Apply Power Limits
                         </button>
                     </div>
@@ -904,7 +940,7 @@
                                    oninput="document.getElementById('sc-p772-val').textContent=this.value+'%'">
                         </div>
                         <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px;"
-                                onclick="applyModeConfig('selfconsumption', 0)">
+                                onclick="applyModeConfig('selfconsumption', 0, this)">
                             Apply Self-Consumption Mode
                         </button>
                     </div>
@@ -950,7 +986,7 @@
                                    oninput="document.getElementById('bk-p772-val').textContent=this.value+'%'">
                         </div>
                         <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px;"
-                                onclick="applyModeConfig('backup', 1)">
+                                onclick="applyModeConfig('backup', 1, this)">
                             Apply Backup Mode
                         </button>
                     </div>
@@ -1097,7 +1133,7 @@
                                    oninput="document.getElementById('ud-l074-val').textContent=this.value+'%'">
                         </div>
                         <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px;"
-                                onclick="applyModeConfig('userdefined', 2)">
+                                onclick="applyModeConfig('userdefined', 2, this)">
                             Apply User Defined Mode
                         </button>
                     </div>
@@ -1125,7 +1161,7 @@
                                    oninput="document.getElementById('og-p772-val').textContent=this.value+'%'">
                         </div>
                         <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px;"
-                                onclick="applyModeConfig('offgrid', 3)">
+                                onclick="applyModeConfig('offgrid', 3, this)">
                             Apply Off-Grid Mode
                         </button>
                     </div>
@@ -1592,7 +1628,17 @@
                     if (mapping[key]) {
                         const elem = document.getElementById(mapping[key].elem);
                         if (elem) {
-                            elem.textContent = typeof value === 'number' ? value.toFixed(2) : value;
+                            const display = typeof value === 'number' ? value.toFixed(2) : value;
+                            if (elem.dataset.lastVal !== display) {
+                                elem.dataset.lastVal = display;
+                                const row = elem.closest('.param-item');
+                                if (row) {
+                                    row.classList.remove('param-updated');
+                                    void row.offsetWidth; // force reflow to restart animation
+                                    row.classList.add('param-updated');
+                                }
+                            }
+                            elem.textContent = display;
                         }
 
                         // Store historical data
@@ -1704,8 +1750,52 @@
             try {
                 await confirmation;
                 log(`✅ ${key} confirmed (v=0)`, 'success');
+                return true;
             } catch (err) {
                 log(`⚠️ Write ${key} ${err.message === 'timeout' ? 'timed out' : `failed: ${err.message}`}`, 'error');
+                return false;
+            }
+        }
+
+        // Send all key-value pairs in ONE command, await all confirmations concurrently
+        async function writeParameterBatch(pairs) {
+            if (!writeCharacteristic || pairs.length === 0) return;
+
+            // Register ALL pending promises before sending — no response can arrive early
+            const confirmations = pairs.map(({ k }) => new Promise((resolve, reject) => {
+                const timeoutId = setTimeout(() => {
+                    pendingWrites.delete(k);
+                    reject(new Error('timeout'));
+                }, 8000);
+                pendingWrites.set(k, {
+                    resolve() { clearTimeout(timeoutId); pendingWrites.delete(k); resolve(); },
+                    reject(e)  { clearTimeout(timeoutId); pendingWrites.delete(k); reject(e); }
+                });
+            }));
+
+            // One BLE packet for the whole batch
+            await sendCommand({
+                cmd: 'local',
+                act: '3',
+                tid: Math.floor(Math.random() * 100000).toString(),
+                data: pairs
+            }, false);
+            log(`✏️ Batch writing ${pairs.length} parameters…`);
+
+            // Wait for every confirmation (don't short-circuit on failure)
+            const results = await Promise.allSettled(confirmations);
+            const failed  = results.filter(r => r.status === 'rejected');
+
+            if (failed.length === 0) {
+                log(`✅ All ${pairs.length} parameters confirmed`, 'success');
+                return true;
+            } else {
+                failed.forEach(r => {
+                    const k = pairs[results.indexOf(r)]?.k ?? '?';
+                    log(`⚠️ ${k}: ${r.reason?.message}`, 'error');
+                });
+                log(`⚠️ ${pairs.length - failed.length}/${pairs.length} confirmed`, 'error');
+                return false;
             }
         }
 
@@ -1732,7 +1822,7 @@
             await sendCommand({
                 cmd: 'local',
                 act: '1',
-                tid: Math.floor(Math.random() * 100000).toString(),
+                tid: '10001',
                 data: ['P002', 'B002', 'P006', 'L023'].map(k => ({ k }))
             }, false);
         }
@@ -1758,6 +1848,27 @@
             log(`🔄 Setting work mode: ${modes[mode]}`);
         }
 
+        // ── Button feedback helpers ───────────────────────
+
+        function setButtonState(btn, state) {
+            if (!btn) return;
+            if (state === 'loading') {
+                btn.dataset.origHtml = btn.innerHTML;
+                btn.innerHTML = 'Applying…';
+                btn.classList.add('btn-loading');
+            } else {
+                btn.classList.remove('btn-loading');
+                const ok = state === 'success';
+                btn.innerHTML = ok ? '✅ Applied' : '❌ Failed — check log';
+                btn.classList.add(ok ? 'btn-write-success' : 'btn-write-error');
+                setTimeout(() => {
+                    btn.classList.remove('btn-write-success', 'btn-write-error');
+                    btn.innerHTML = btn.dataset.origHtml || btn.innerHTML;
+                    delete btn.dataset.origHtml;
+                }, ok ? 2500 : 3500);
+            }
+        }
+
         // ── Config tab ────────────────────────────────────
 
         function switchConfigMode(mode) {
@@ -1780,51 +1891,51 @@
             return h * 60 + m;
         }
 
-        async function applyModeConfig(modeKey, modeNum) {
+        async function applyModeConfig(modeKey, modeNum, btn) {
             if (!device || !device.gatt.connected) {
                 log('❌ Not connected', 'error');
                 return;
             }
+            setButtonState(btn, 'loading');
 
-            const section = document.getElementById(`config-${modeKey}`);
+            const section  = document.getElementById(`config-${modeKey}`);
             const modeNames = { selfconsumption: 'Self-Consumption', backup: 'Backup', userdefined: 'User Defined', offgrid: 'Off-Grid' };
             log(`🔧 Applying ${modeNames[modeKey]} (L019=${modeNum})…`);
 
-            // Build set of params forced to 0 by disabled period toggles
+            // Params forced to 0 by disabled period toggles
             const forcedZero = new Set();
             section.querySelectorAll('input[data-period-for]').forEach(cb => {
-                if (!cb.checked) {
-                    cb.dataset.periodFor.split(',').forEach(p => forcedZero.add(p.trim()));
-                }
+                if (!cb.checked) cb.dataset.periodFor.split(',').forEach(p => forcedZero.add(p.trim()));
             });
 
-            // Collect param → value from all data-param inputs
-            const writes = {};
+            // Collect all {k, v} pairs from data-param inputs
+            const pairs = [];
             section.querySelectorAll('[data-param]').forEach(el => {
-                const param = el.dataset.param;
-                if (forcedZero.has(param)) {
-                    writes[param] = 0;
-                } else if (el.type === 'time') {
-                    writes[param] = timeToMinutes(el.value);
-                } else {
-                    writes[param] = parseInt(el.value) || 0;
-                }
+                const k = el.dataset.param;
+                let v;
+                if (forcedZero.has(k))  v = 0;
+                else if (el.type === 'time') v = timeToMinutes(el.value);
+                else v = parseInt(el.value) || 0;
+                pairs.push({ k, v });
             });
 
-            // Write work mode first, then all parameters
-            await writeParameter('P651', modeNum);
-            for (const [k, v] of Object.entries(writes)) {
-                await writeParameter(k, v);
-            }
-            log(`✅ ${modeNames[modeKey]} configuration applied`, 'success');
+            // 1. Set work mode first and wait for confirmation
+            const modeOk = await writeParameter('P651', modeNum);
+
+            // 2. Send all mode-specific parameters in one batch
+            const paramsOk = await writeParameterBatch(pairs);
+
+            setButtonState(btn, (modeOk && paramsOk) ? 'success' : 'error');
+            if (modeOk && paramsOk) log(`✅ ${modeNames[modeKey]} configuration applied`, 'success');
         }
 
-        function writePowerLimits() {
-            const chargeLimit = document.getElementById('chargePowerSlider').value;
-            const dischargeLimit = document.getElementById('dischargePowerSlider').value;
-            
-            writeParameter('L017', parseInt(chargeLimit));
-            setTimeout(() => writeParameter('L018', parseInt(dischargeLimit)), 250);
+        async function writePowerLimits(btn) {
+            setButtonState(btn, 'loading');
+            const ok = await writeParameterBatch([
+                { k: 'L017', v: parseInt(document.getElementById('chargePowerSlider').value) },
+                { k: 'L018', v: parseInt(document.getElementById('dischargePowerSlider').value) }
+            ]);
+            setButtonState(btn, ok ? 'success' : 'error');
         }
 
         function updateSliderValue(elementId, value, unit) {
