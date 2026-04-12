@@ -263,12 +263,13 @@
 
             // Wait for key exchange, then start live polling
             setTimeout(async () => {
-                await refreshStaticData();       // device info once
+                await refreshStaticData();       // device info + work mode once
                 await refreshAllData();          // first live snapshot
-                // Auto-start 1s live refresh
                 autoRefreshInterval = setInterval(refreshAllData, 1000);
                 document.getElementById('autoRefreshCheckbox').checked = true;
                 log('⏰ Live refresh started (1s)', 'success');
+                // Daily totals read after a short delay so device isn't flooded
+                setTimeout(refreshExtendedData, 2000);
             }, 1000);
         }
 
@@ -295,11 +296,8 @@
                     jsonString = new TextDecoder().decode(jsonBytes);
                     log('📦 LOCAL mode packet');
                 } else {
-                    // STANDARD MODE - raw JSON
-                    jsonString = new TextDecoder().decode(decrypted);
-                    // Strip trailing null bytes / garbage that BLE padding can add
-                    const end = jsonString.lastIndexOf('}');
-                    if (end !== -1) jsonString = jsonString.substring(0, end + 1);
+                    // STANDARD MODE - raw JSON; strip trailing null bytes only
+                    jsonString = new TextDecoder().decode(decrypted).replace(/\0+$/, '').trim();
                     log('📄 STANDARD mode packet');
                 }
 
@@ -311,21 +309,17 @@
                 if (parsed.data && Array.isArray(parsed.data)) {
                     parsed.data.forEach(item => {
                         const pending = pendingWrites.get(item.k);
-                        if (pending) {
-                            if (item.v === 0) {
-                                pending.resolve();
-                            } else {
-                                pending.reject(new Error(`Unexpected ack value: ${item.v}`));
-                            }
+                        if (pending && item.v === 0) {
+                            pending.resolve();
                         }
                     });
                 }
 
-                populateConfigInputs(parsed.data || []);
+                try { populateConfigInputs(parsed.data || []); } catch(e) { log(`⚠️ Config error: ${e.message}`, 'error'); }
                 updateUIWithData(parsed);
 
             } catch (error) {
-                log(`❌ Parse error: ${error.message}`, 'error');
+                log(`❌ Parse error: ${error.message} | raw: ${new TextDecoder().decode(new Uint8Array(event.target.value.buffer)).replace(/\0/g,'').substring(0,80)}`, 'error');
                 console.error(error);
             }
         }
@@ -554,26 +548,24 @@
             }
         }
 
-        // Alternate between two key sets each tick — only ONE command per tick,
-        // same as before, so the device is never waiting on two requests at once.
-        let _liveToggle = false;
-        const LIVE_KEYS_A = [
-            'B034', 'B035', 'B043', 'P069', 'P070',
-            'P024', 'P025', 'P026', 'P027', 'P060',
-            'P044', 'P045', 'P053', 'P055'
-        ];
-        const LIVE_KEYS_B = [
-            'P638', 'P639', 'P075', 'P076', 'P061', 'P062', 'P500'
-        ];
-
         async function refreshAllData() {
             if (!device || !device.gatt.connected) return;
-            _liveToggle = !_liveToggle;
-            const keys = _liveToggle ? LIVE_KEYS_A : LIVE_KEYS_B;
             await sendCommand({
                 cmd: 'local', act: '1',
                 tid: '10001',
-                data: keys.map(k => ({ k }))
+                data: ['B034','B035','B043','P069','P070',
+                       'P024','P025','P026','P027','P060',
+                       'P044','P045','P053','P055'].map(k => ({ k }))
+            }, false);
+        }
+
+        // Daily totals + power state — read once after connect, not every second
+        async function refreshExtendedData() {
+            if (!device || !device.gatt.connected) return;
+            await sendCommand({
+                cmd: 'local', act: '1',
+                tid: '10001',
+                data: ['P638','P639','P075','P076','P061','P062','P500'].map(k => ({ k }))
             }, false);
         }
 
