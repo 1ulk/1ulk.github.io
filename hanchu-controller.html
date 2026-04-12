@@ -2253,8 +2253,12 @@
             // 2. Send all mode-specific parameters in one batch
             const paramsOk = await writeParameterBatch(pairs);
 
-            setButtonState(btn, (modeOk && paramsOk) ? 'success' : 'error');
-            if (modeOk && paramsOk) log(`✅ ${modeNames[modeKey]} configuration applied`, 'success');
+            const ok = modeOk && paramsOk;
+            setButtonState(btn, ok ? 'success' : 'error');
+            if (ok) {
+                log(`✅ ${modeNames[modeKey]} configuration applied`, 'success');
+                await readConfigParams();
+            }
         }
 
         async function writePowerLimits(btn) {
