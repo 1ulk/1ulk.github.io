@@ -334,6 +334,31 @@
             color: #1e40af;
         }
 
+        .badge-purple {
+            background: #ede9fe;
+            color: #5b21b6;
+        }
+
+        /* Active mode pill on config mode buttons */
+        .mode-btn { position: relative; }
+        .mode-active-badge {
+            display: none;
+            position: absolute;
+            top: -8px;
+            right: -6px;
+            background: #10b981;
+            color: white;
+            font-size: 9px;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 6px;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            box-shadow: 0 1px 4px rgba(16,185,129,0.4);
+            pointer-events: none;
+        }
+        .mode-btn.device-active .mode-active-badge { display: block; }
+
         .tabs {
             display: flex;
             gap: 10px;
@@ -796,6 +821,10 @@
                                 <div class="info-label">Firmware</div>
                                 <div class="info-value" id="firmware">-</div>
                             </div>
+                            <div class="info-item" style="grid-column: 1 / -1; display:flex; justify-content:space-between; align-items:center;">
+                                <div class="info-label">Active Work Mode</div>
+                                <span id="activeWorkMode" class="badge badge-blue">—</span>
+                            </div>
                         </div>
                     </div>
 
@@ -974,10 +1003,10 @@
                         <h2>Work Mode Configuration</h2>
                     </div>
                     <div class="mode-selector">
-                        <button class="mode-btn active" data-mode="selfconsumption" onclick="switchConfigMode('selfconsumption')">🏠 Self-Consumption</button>
-                        <button class="mode-btn" data-mode="backup" onclick="switchConfigMode('backup')">🛡️ Backup</button>
-                        <button class="mode-btn" data-mode="userdefined" onclick="switchConfigMode('userdefined')">🛠️ User Defined</button>
-                        <button class="mode-btn" data-mode="offgrid" onclick="switchConfigMode('offgrid')">🔋 Off-Grid</button>
+                        <button class="mode-btn active" data-mode="selfconsumption" onclick="switchConfigMode('selfconsumption')">🏠 Self-Consumption<span class="mode-active-badge">Active</span></button>
+                        <button class="mode-btn" data-mode="backup" onclick="switchConfigMode('backup')">🛡️ Backup<span class="mode-active-badge">Active</span></button>
+                        <button class="mode-btn" data-mode="userdefined" onclick="switchConfigMode('userdefined')">🛠️ User Defined<span class="mode-active-badge">Active</span></button>
+                        <button class="mode-btn" data-mode="offgrid" onclick="switchConfigMode('offgrid')">🔋 Off-Grid<span class="mode-active-badge">Active</span></button>
                     </div>
                 </div>
 
@@ -1992,7 +2021,7 @@
                 cmd: 'local',
                 act: '1',
                 tid: '10001',
-                data: ['P002', 'B002', 'P006', 'L023'].map(k => ({ k }))
+                data: ['P002', 'B002', 'P006', 'L023', 'P651'].map(k => ({ k }))
             }, false);
         }
 
@@ -2111,7 +2140,7 @@
             await sendCommand({
                 cmd: 'local', act: '1',
                 tid: Math.floor(Math.random() * 100000).toString(),
-                data: ['L019',
+                data: ['P651',
                        'L005','L006','L007','L008','L009','L010',
                        'L011','L012','L013','L014','L015','L016',
                        'L017','L018','L074','P647','P648','P772'
@@ -2126,8 +2155,23 @@
             let touchedTimeInput = false;
 
             items.forEach(({ k, v }) => {
-                if (k === 'L019') {
-                    const modeKey = modeMap[parseInt(v)];
+                if (k === 'P651') {
+                    const idx      = parseInt(v);
+                    const modeKey  = modeMap[idx];
+                    const names    = ['Self-Consumption', 'Backup', 'User Defined', 'Off-Grid'];
+                    const badges   = ['badge-green', 'badge-blue', 'badge-purple', 'badge-orange'];
+
+                    // Monitor tab badge
+                    const el = document.getElementById('activeWorkMode');
+                    if (el) {
+                        el.textContent = names[idx] ?? `Mode ${idx}`;
+                        el.className   = `badge ${badges[idx] ?? 'badge-blue'}`;
+                    }
+
+                    // Config tab "Active" pill — mark only the matching button
+                    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('device-active'));
+                    if (modeKey) document.querySelector(`.mode-btn[data-mode="${modeKey}"]`)?.classList.add('device-active');
+
                     if (modeKey) switchConfigMode(modeKey);
                     return;
                 }
@@ -2184,7 +2228,7 @@
 
             const section  = document.getElementById(`config-${modeKey}`);
             const modeNames = { selfconsumption: 'Self-Consumption', backup: 'Backup', userdefined: 'User Defined', offgrid: 'Off-Grid' };
-            log(`🔧 Applying ${modeNames[modeKey]} (L019=${modeNum})…`);
+            log(`🔧 Applying ${modeNames[modeKey]} (P651=${modeNum})…`);
 
             // Params forced to 0 by disabled period toggles
             const forcedZero = new Set();
