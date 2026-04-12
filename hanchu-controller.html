@@ -2054,25 +2054,30 @@
             }
         }
 
-        // Request live telemetry — all keys in one BLE packet
+        // Request live telemetry — split into two packets to stay within BLE MTU
         async function refreshAllData() {
             if (!device || !device.gatt.connected) return;
 
-            const liveKeys = [
+            // Batch 1: real-time power/sensor values (original set)
+            const liveKeys1 = [
                 'B034', 'B035', 'B043', 'P069', 'P070',
-                'P024', 'P025', 'P026', 'P027',
-                'P060', 'P061', 'P062',
-                'P044', 'P045', 'P053', 'P055',
-                'P638', 'P639',
-                'P075', 'P076',
-                'P500'
+                'P024', 'P025', 'P026', 'P027', 'P060',
+                'P044', 'P045', 'P053', 'P055'
             ];
-
             await sendCommand({
-                cmd: 'local',
-                act: '1',
-                tid: '10001',
-                data: liveKeys.map(k => ({ k }))
+                cmd: 'local', act: '1',
+                tid: Math.floor(Math.random() * 100000).toString(),
+                data: liveKeys1.map(k => ({ k }))
+            }, false);
+
+            // Batch 2: daily energy totals + device state (less critical)
+            const liveKeys2 = [
+                'P638', 'P639', 'P075', 'P076', 'P061', 'P062', 'P500'
+            ];
+            await sendCommand({
+                cmd: 'local', act: '1',
+                tid: Math.floor(Math.random() * 100000).toString(),
+                data: liveKeys2.map(k => ({ k }))
             }, false);
         }
 
