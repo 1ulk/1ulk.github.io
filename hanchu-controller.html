@@ -531,49 +531,120 @@
             margin: 18px 0 10px;
         }
         .config-sub-heading:first-child { margin-top: 0; }
-        .time-period-row {
-            display: grid;
-            grid-template-columns: 80px 1fr auto 1fr;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 10px;
+        /* ── 24h Timeline ──────────────────────────────── */
+        .timeline-wrap {
+            background: #f9fafb;
+            border-radius: 10px;
+            padding: 14px 14px 10px;
+            margin-bottom: 20px;
         }
-        .time-period-label {
-            font-size: 13px;
-            color: #6b7280;
-            font-weight: 500;
-        }
-        .time-sep {
-            font-size: 13px;
-            color: #9ca3af;
-            text-align: center;
-        }
-        .period-toggle-row {
+        .timeline-row {
             display: flex;
             align-items: center;
             gap: 10px;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
         }
-        .period-toggle-row label {
-            font-size: 13px;
-            color: #6b7280;
-            font-weight: 500;
-            cursor: pointer;
+        .timeline-label-side {
+            font-size: 11px;
+            font-weight: 700;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            width: 60px;
+            text-align: right;
+            flex-shrink: 0;
+        }
+        .timeline-track {
+            flex: 1;
+            height: 14px;
+            background: #e5e7eb;
+            border-radius: 7px;
+            position: relative;
+            overflow: hidden;
+        }
+        .timeline-segment {
+            position: absolute;
+            height: 100%;
+            transition: left 0.3s, width 0.3s;
+        }
+        .timeline-segment.charge    { background: #10b981; }
+        .timeline-segment.discharge { background: #f59e0b; }
+        .timeline-ticks {
+            display: flex;
+            justify-content: space-between;
+            padding-left: 70px;
+            margin-top: 4px;
+        }
+        .timeline-ticks span { font-size: 10px; color: #9ca3af; }
+
+        /* ── Period cards ──────────────────────────────── */
+        .period-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 10px;
+            transition: opacity 0.25s;
+        }
+        .period-card.charge-period    { border-left: 3px solid #10b981; }
+        .period-card.discharge-period { border-left: 3px solid #f59e0b; }
+        .period-card.disabled-period  { opacity: 0.45; }
+        .period-card-header {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .period-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: #374151;
+            flex: 1;
+        }
+        .period-duration {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 3px 9px;
+            border-radius: 10px;
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+        .charge-period    .period-duration { background: #d1fae5; color: #065f46; }
+        .discharge-period .period-duration { background: #fef3c7; color: #92400e; }
+        .period-time-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+        }
+        .time-input-group { flex: 1; }
+        .time-input-group > label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 5px;
         }
         input[type="time"] {
-            padding: 9px 10px;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            font-size: 14px;
-            color: #1f2937;
-            background: #f9fafb;
             width: 100%;
+            padding: 11px 8px;
+            border: 1.5px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 17px;
+            font-weight: 600;
+            color: #1f2937;
+            background: white;
+            text-align: center;
+            -webkit-appearance: none;
         }
-        input[type="time"]:focus { outline: none; border-color: #667eea; background: white; }
-        input[type="time"]:disabled { opacity: 0.35; }
+        input[type="time"]:focus  { outline: none; border-color: #667eea; }
+        input[type="time"]:disabled { opacity: 0.4; background: #f9fafb; }
+        .time-arrow {
+            font-size: 18px;
+            color: #d1d5db;
+            padding-bottom: 12px;
+            flex-shrink: 0;
+        }
         .section-divider { height: 1px; background: #f3f4f6; margin: 16px 0; }
 
         /* ── Mobile ─────────────────────────────────────── */
@@ -997,86 +1068,183 @@
                     <div class="card">
                         <div class="card-header"><span class="card-icon">🛠️</span><h2>User Defined Settings</h2></div>
 
+                        <!-- 24h visual timeline -->
+                        <div class="timeline-wrap">
+                            <div class="timeline-row">
+                                <span class="timeline-label-side">Charge</span>
+                                <div class="timeline-track">
+                                    <div class="timeline-segment charge" id="tl-p1"></div>
+                                    <div class="timeline-segment charge" id="tl-p2"></div>
+                                    <div class="timeline-segment charge" id="tl-p3"></div>
+                                </div>
+                            </div>
+                            <div class="timeline-row">
+                                <span class="timeline-label-side">Discharge</span>
+                                <div class="timeline-track">
+                                    <div class="timeline-segment discharge" id="tl-p4"></div>
+                                    <div class="timeline-segment discharge" id="tl-p5"></div>
+                                    <div class="timeline-segment discharge" id="tl-p6"></div>
+                                </div>
+                            </div>
+                            <div class="timeline-ticks">
+                                <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span>
+                            </div>
+                        </div>
+
                         <div class="config-sub-heading">Charge Time Periods</div>
-                        <!-- Period 1 (always active) -->
-                        <div class="time-period-row">
-                            <span class="time-period-label">Period 1</span>
-                            <input type="time" data-param="L005" value="00:00">
-                            <span class="time-sep">→</span>
-                            <input type="time" data-param="L006" value="06:00">
+
+                        <!-- Period 1 — always active -->
+                        <div class="period-card charge-period">
+                            <div class="period-card-header">
+                                <span class="period-name">Period 1</span>
+                                <span class="period-duration charge" id="dur-p1">6h 00m</span>
+                            </div>
+                            <div class="period-time-row">
+                                <div class="time-input-group">
+                                    <label>Start</label>
+                                    <input type="time" id="ud-p1-start" data-param="L005" value="00:00"
+                                           oninput="onTimeInput('dur-p1','ud-p1-start','ud-p1-end')">
+                                </div>
+                                <div class="time-arrow">→</div>
+                                <div class="time-input-group">
+                                    <label>End</label>
+                                    <input type="time" id="ud-p1-end" data-param="L006" value="06:00"
+                                           oninput="onTimeInput('dur-p1','ud-p1-start','ud-p1-end')">
+                                </div>
+                            </div>
                         </div>
+
                         <!-- Period 2 -->
-                        <div class="period-toggle-row">
-                            <label>
-                                <input type="checkbox" checked data-period-for="L007,L008"
-                                       onchange="togglePeriod(this,'ud-p2-start','ud-p2-end')">
-                                Period 2
-                            </label>
+                        <div class="period-card charge-period" id="card-p2">
+                            <div class="period-card-header">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" checked data-period-for="L007,L008"
+                                           onchange="togglePeriodCard(this,'card-p2','ud-p2-start','ud-p2-end')">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <span class="period-name">Period 2</span>
+                                <span class="period-duration" id="dur-p2">6h 00m</span>
+                            </div>
+                            <div class="period-time-row">
+                                <div class="time-input-group">
+                                    <label>Start</label>
+                                    <input type="time" id="ud-p2-start" data-param="L007" value="12:00"
+                                           oninput="onTimeInput('dur-p2','ud-p2-start','ud-p2-end')">
+                                </div>
+                                <div class="time-arrow">→</div>
+                                <div class="time-input-group">
+                                    <label>End</label>
+                                    <input type="time" id="ud-p2-end" data-param="L008" value="18:00"
+                                           oninput="onTimeInput('dur-p2','ud-p2-start','ud-p2-end')">
+                                </div>
+                            </div>
                         </div>
-                        <div class="time-period-row">
-                            <span></span>
-                            <input type="time" id="ud-p2-start" data-param="L007" value="12:00">
-                            <span class="time-sep">→</span>
-                            <input type="time" id="ud-p2-end"   data-param="L008" value="18:00">
-                        </div>
+
                         <!-- Period 3 -->
-                        <div class="period-toggle-row">
-                            <label>
-                                <input type="checkbox" data-period-for="L009,L010"
-                                       onchange="togglePeriod(this,'ud-p3-start','ud-p3-end')">
-                                Period 3
-                            </label>
-                        </div>
-                        <div class="time-period-row">
-                            <span></span>
-                            <input type="time" id="ud-p3-start" data-param="L009" value="00:00" disabled>
-                            <span class="time-sep">→</span>
-                            <input type="time" id="ud-p3-end"   data-param="L010" value="00:00" disabled>
+                        <div class="period-card charge-period disabled-period" id="card-p3">
+                            <div class="period-card-header">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" data-period-for="L009,L010"
+                                           onchange="togglePeriodCard(this,'card-p3','ud-p3-start','ud-p3-end')">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <span class="period-name">Period 3</span>
+                                <span class="period-duration" id="dur-p3">—</span>
+                            </div>
+                            <div class="period-time-row">
+                                <div class="time-input-group">
+                                    <label>Start</label>
+                                    <input type="time" id="ud-p3-start" data-param="L009" value="00:00" disabled
+                                           oninput="onTimeInput('dur-p3','ud-p3-start','ud-p3-end')">
+                                </div>
+                                <div class="time-arrow">→</div>
+                                <div class="time-input-group">
+                                    <label>End</label>
+                                    <input type="time" id="ud-p3-end" data-param="L010" value="00:00" disabled
+                                           oninput="onTimeInput('dur-p3','ud-p3-start','ud-p3-end')">
+                                </div>
+                            </div>
                         </div>
 
                         <div class="section-divider"></div>
                         <div class="config-sub-heading">Discharge Time Periods</div>
+
                         <!-- Period 4 -->
-                        <div class="period-toggle-row">
-                            <label>
-                                <input type="checkbox" data-period-for="L011,L012"
-                                       onchange="togglePeriod(this,'ud-p4-start','ud-p4-end')">
-                                Period 4
-                            </label>
+                        <div class="period-card discharge-period disabled-period" id="card-p4">
+                            <div class="period-card-header">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" data-period-for="L011,L012"
+                                           onchange="togglePeriodCard(this,'card-p4','ud-p4-start','ud-p4-end')">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <span class="period-name">Period 4</span>
+                                <span class="period-duration" id="dur-p4">—</span>
+                            </div>
+                            <div class="period-time-row">
+                                <div class="time-input-group">
+                                    <label>Start</label>
+                                    <input type="time" id="ud-p4-start" data-param="L011" value="00:00" disabled
+                                           oninput="onTimeInput('dur-p4','ud-p4-start','ud-p4-end')">
+                                </div>
+                                <div class="time-arrow">→</div>
+                                <div class="time-input-group">
+                                    <label>End</label>
+                                    <input type="time" id="ud-p4-end" data-param="L012" value="00:00" disabled
+                                           oninput="onTimeInput('dur-p4','ud-p4-start','ud-p4-end')">
+                                </div>
+                            </div>
                         </div>
-                        <div class="time-period-row">
-                            <span></span>
-                            <input type="time" id="ud-p4-start" data-param="L011" value="00:00" disabled>
-                            <span class="time-sep">→</span>
-                            <input type="time" id="ud-p4-end"   data-param="L012" value="00:00" disabled>
-                        </div>
+
                         <!-- Period 5 -->
-                        <div class="period-toggle-row">
-                            <label>
-                                <input type="checkbox" data-period-for="L013,L014"
-                                       onchange="togglePeriod(this,'ud-p5-start','ud-p5-end')">
-                                Period 5
-                            </label>
+                        <div class="period-card discharge-period disabled-period" id="card-p5">
+                            <div class="period-card-header">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" data-period-for="L013,L014"
+                                           onchange="togglePeriodCard(this,'card-p5','ud-p5-start','ud-p5-end')">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <span class="period-name">Period 5</span>
+                                <span class="period-duration" id="dur-p5">—</span>
+                            </div>
+                            <div class="period-time-row">
+                                <div class="time-input-group">
+                                    <label>Start</label>
+                                    <input type="time" id="ud-p5-start" data-param="L013" value="00:00" disabled
+                                           oninput="onTimeInput('dur-p5','ud-p5-start','ud-p5-end')">
+                                </div>
+                                <div class="time-arrow">→</div>
+                                <div class="time-input-group">
+                                    <label>End</label>
+                                    <input type="time" id="ud-p5-end" data-param="L014" value="00:00" disabled
+                                           oninput="onTimeInput('dur-p5','ud-p5-start','ud-p5-end')">
+                                </div>
+                            </div>
                         </div>
-                        <div class="time-period-row">
-                            <span></span>
-                            <input type="time" id="ud-p5-start" data-param="L013" value="00:00" disabled>
-                            <span class="time-sep">→</span>
-                            <input type="time" id="ud-p5-end"   data-param="L014" value="00:00" disabled>
-                        </div>
+
                         <!-- Period 6 -->
-                        <div class="period-toggle-row">
-                            <label>
-                                <input type="checkbox" data-period-for="L015,L016"
-                                       onchange="togglePeriod(this,'ud-p6-start','ud-p6-end')">
-                                Period 6
-                            </label>
-                        </div>
-                        <div class="time-period-row">
-                            <span></span>
-                            <input type="time" id="ud-p6-start" data-param="L015" value="00:00" disabled>
-                            <span class="time-sep">→</span>
-                            <input type="time" id="ud-p6-end"   data-param="L016" value="00:00" disabled>
+                        <div class="period-card discharge-period disabled-period" id="card-p6">
+                            <div class="period-card-header">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" data-period-for="L015,L016"
+                                           onchange="togglePeriodCard(this,'card-p6','ud-p6-start','ud-p6-end')">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <span class="period-name">Period 6</span>
+                                <span class="period-duration" id="dur-p6">—</span>
+                            </div>
+                            <div class="period-time-row">
+                                <div class="time-input-group">
+                                    <label>Start</label>
+                                    <input type="time" id="ud-p6-start" data-param="L015" value="00:00" disabled
+                                           oninput="onTimeInput('dur-p6','ud-p6-start','ud-p6-end')">
+                                </div>
+                                <div class="time-arrow">→</div>
+                                <div class="time-input-group">
+                                    <label>End</label>
+                                    <input type="time" id="ud-p6-end" data-param="L016" value="00:00" disabled
+                                           oninput="onTimeInput('dur-p6','ud-p6-start','ud-p6-end')">
+                                </div>
+                            </div>
                         </div>
 
                         <div class="section-divider"></div>
@@ -1586,6 +1754,7 @@
                     });
                 }
 
+                populateConfigInputs(parsed.data || []);
                 updateUIWithData(parsed);
 
             } catch (error) {
@@ -1885,6 +2054,121 @@
             end.disabled   = !checkbox.checked;
         }
 
+        // ── Period card helpers ───────────────────────────
+
+        function togglePeriodCard(checkbox, cardId, startId, endId) {
+            const card  = document.getElementById(cardId);
+            const start = document.getElementById(startId);
+            const end   = document.getElementById(endId);
+            card?.classList.toggle('disabled-period', !checkbox.checked);
+            if (start) start.disabled = !checkbox.checked;
+            if (end)   end.disabled   = !checkbox.checked;
+            updateTimeline();
+        }
+
+        function onTimeInput(durId, startId, endId) {
+            const start = timeToMinutes(document.getElementById(startId)?.value || '00:00');
+            const end   = timeToMinutes(document.getElementById(endId)?.value   || '00:00');
+            const dur   = Math.max(0, end - start);
+            const el    = document.getElementById(durId);
+            if (el) el.textContent = dur > 0
+                ? `${Math.floor(dur / 60)}h ${(dur % 60).toString().padStart(2, '0')}m`
+                : '—';
+            updateTimeline();
+        }
+
+        function minutesToTime(minutes) {
+            const m = Math.max(0, Math.min(1439, parseInt(minutes) || 0));
+            return `${Math.floor(m / 60).toString().padStart(2, '0')}:${(m % 60).toString().padStart(2, '0')}`;
+        }
+
+        function updateTimeline() {
+            const segs = [
+                { s: 'ud-p1-start', e: 'ud-p1-end', id: 'tl-p1' },
+                { s: 'ud-p2-start', e: 'ud-p2-end', id: 'tl-p2' },
+                { s: 'ud-p3-start', e: 'ud-p3-end', id: 'tl-p3' },
+                { s: 'ud-p4-start', e: 'ud-p4-end', id: 'tl-p4' },
+                { s: 'ud-p5-start', e: 'ud-p5-end', id: 'tl-p5' },
+                { s: 'ud-p6-start', e: 'ud-p6-end', id: 'tl-p6' },
+            ];
+            segs.forEach(({ s, e, id }) => {
+                const seg   = document.getElementById(id);
+                const sEl   = document.getElementById(s);
+                const eEl   = document.getElementById(e);
+                if (!seg || !sEl || !eEl) return;
+                const sMin  = timeToMinutes(sEl.value);
+                const eMin  = timeToMinutes(eEl.value);
+                const valid = !sEl.disabled && eMin > sMin;
+                seg.style.left  = valid ? `${(sMin / 1440) * 100}%` : '0%';
+                seg.style.width = valid ? `${((eMin - sMin) / 1440) * 100}%` : '0%';
+            });
+        }
+
+        // Read all config parameters from device
+        async function readConfigParams() {
+            if (!device?.gatt?.connected) return;
+            log('📖 Reading config parameters…');
+            await sendCommand({
+                cmd: 'local', act: '1',
+                tid: Math.floor(Math.random() * 100000).toString(),
+                data: ['L019',
+                       'L005','L006','L007','L008','L009','L010',
+                       'L011','L012','L013','L014','L015','L016',
+                       'L017','L018','L074','P647','P648','P772'
+                      ].map(k => ({ k }))
+            }, false);
+        }
+
+        // Populate config form fields from incoming BLE data
+        function populateConfigInputs(items) {
+            if (!items?.length) return;
+            const modeMap = { 0: 'selfconsumption', 1: 'backup', 2: 'userdefined', 3: 'offgrid' };
+            let touchedTimeInput = false;
+
+            items.forEach(({ k, v }) => {
+                if (k === 'L019') {
+                    const modeKey = modeMap[parseInt(v)];
+                    if (modeKey) switchConfigMode(modeKey);
+                    return;
+                }
+
+                document.querySelectorAll(`[data-param="${k}"]`).forEach(input => {
+                    if (input.type === 'time') {
+                        const t = minutesToTime(parseInt(v) || 0);
+                        if (input.value !== t) {
+                            input.value = t;
+                            input.dispatchEvent(new Event('input')); // updates duration badge
+                            touchedTimeInput = true;
+                        }
+                    } else if (input.type === 'range') {
+                        input.value = v;
+                        input.dispatchEvent(new Event('input')); // updates label display
+                    }
+                });
+
+                // Re-enable period card if device reports a non-zero period
+                if (['L007','L009','L011','L013','L015'].includes(k) && parseInt(v) > 0) {
+                    const cardMap = { L007:'card-p2', L009:'card-p3', L011:'card-p4', L013:'card-p5', L015:'card-p6' };
+                    const startMap = { L007:'ud-p2-start', L009:'ud-p3-start', L011:'ud-p4-start', L013:'ud-p5-start', L015:'ud-p6-start' };
+                    const endMap   = { L007:'ud-p2-end',   L009:'ud-p3-end',   L011:'ud-p4-end',   L013:'ud-p5-end',   L015:'ud-p6-end' };
+                    const card  = document.getElementById(cardMap[k]);
+                    const startEl = document.getElementById(startMap[k]);
+                    const endEl   = document.getElementById(endMap[k]);
+                    if (card) {
+                        const cb = card.querySelector('input[type="checkbox"]');
+                        if (cb && !cb.checked) {
+                            cb.checked = true;
+                            card.classList.remove('disabled-period');
+                            if (startEl) startEl.disabled = false;
+                            if (endEl)   endEl.disabled   = false;
+                        }
+                    }
+                }
+            });
+
+            if (touchedTimeInput) updateTimeline();
+        }
+
         function timeToMinutes(timeStr) {
             if (!timeStr) return 0;
             const [h, m] = timeStr.split(':').map(Number);
@@ -1948,6 +2232,10 @@
 
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
             document.getElementById(tabName + 'Tab').classList.add('active');
+
+            if (tabName === 'config' && device?.gatt?.connected) {
+                readConfigParams();
+            }
         }
 
         // Chart functions
@@ -2115,6 +2403,7 @@
 
         // Verify required libraries loaded
         window.addEventListener('DOMContentLoaded', () => {
+            updateTimeline(); // draw default period segments
             const issues = [];
             
             if (typeof CryptoJS === 'undefined') {
