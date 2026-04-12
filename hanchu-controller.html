@@ -756,14 +756,17 @@
                             <h2>Work Mode</h2>
                         </div>
                         <div class="quick-actions">
-                            <button class="btn btn-secondary" onclick="setWorkMode(0)">
-                                Self-Use
-                            </button>
                             <button class="btn btn-secondary" onclick="setWorkMode(1)">
-                                Feed-In
+                                Self-Consumption
                             </button>
                             <button class="btn btn-secondary" onclick="setWorkMode(2)">
                                 Backup
+                            </button>
+                            <button class="btn btn-secondary" onclick="setWorkMode(3)">
+                                User-Defined
+                            </button>
+                            <button class="btn btn-secondary" onclick="setWorkMode(4)">
+                                Off-Grid
                             </button>
                         </div>
                         <div style="margin-top: 15px;">
@@ -888,6 +891,9 @@
         let dynamicKey = null;
         let randomFix = null;
         let autoRefreshInterval = null;
+
+        // Pending write confirmations: key → { resolve, reject, timeoutId }
+        const pendingWrites = new Map();
         
         // Historical data storage
         let historicalData = {
@@ -1090,6 +1096,10 @@
                 log('🔌 Disconnected', 'info');
             }
             
+            // Reject any in-flight write confirmations
+            pendingWrites.forEach(p => p.reject(new Error('disconnected')));
+            pendingWrites.clear();
+
             device = null;
             readCharacteristic = null;
             writeCharacteristic = null;
@@ -1168,8 +1178,23 @@
                 }
 
                 log(`📄 JSON: ${jsonString.substring(0, 100)}...`);
-                
+
                 const parsed = JSON.parse(jsonString);
+
+                // Resolve any pending write confirmations (v === 0 means success)
+                if (parsed.data && Array.isArray(parsed.data)) {
+                    parsed.data.forEach(item => {
+                        const pending = pendingWrites.get(item.k);
+                        if (pending) {
+                            if (item.v === 0) {
+                                pending.resolve();
+                            } else {
+                                pending.reject(new Error(`Unexpected ack value: ${item.v}`));
+                            }
+                        }
+                    });
+                }
+
                 updateUIWithData(parsed);
 
             } catch (error) {
@@ -1189,8 +1214,7 @@
                     
                     // Map to UI and historical data
                     const mapping = {
-                        'soc': { elem: 'soc', hist: 'soc' },
-                        'B034': { elem: 'soc', hist: 'soc' },
+                        'P071': { elem: 'soc', hist: 'soc' },
                         'B035': { elem: 'voltage', hist: 'voltage' },
                         'B043': { elem: 'current', hist: 'current' },
                         'P069': { elem: 'power', hist: 'power' },
@@ -1299,15 +1323,35 @@
         }
 
         async function writeParameter(key, value) {
+            // Register confirmation promise before sending so no response is missed
+            const confirmation = new Promise((resolve, reject) => {
+                const timeoutId = setTimeout(() => {
+                    pendingWrites.delete(key);
+                    reject(new Error('timeout'));
+                }, 5000);
+
+                pendingWrites.set(key, {
+                    resolve() { clearTimeout(timeoutId); pendingWrites.delete(key); resolve(); },
+                    reject(e)  { clearTimeout(timeoutId); pendingWrites.delete(key); reject(e); }
+                });
+            });
+
             const command = {
                 cmd: 'local',
                 act: '3', // Write
-                tid:  '10001',
+                tid: Math.floor(Math.random() * 100000).toString(),
                 data: [{ k: key, v: value }]
             };
 
-            await sendCommand(command, false); // STANDARD mode - raw JSON
-            log(`✏️ Writing ${key} = ${value}`, 'success');
+            await sendCommand(command, false);
+            log(`✏️ Writing ${key} = ${value}…`);
+
+            try {
+                await confirmation;
+                log(`✅ ${key} confirmed (v=0)`, 'success');
+            } catch (err) {
+                log(`⚠️ Write ${key} ${err.message === 'timeout' ? 'timed out' : `failed: ${err.message}`}`, 'error');
+            }
         }
 
         // Request live telemetry — all keys in one BLE packet
@@ -1323,7 +1367,7 @@
             await sendCommand({
                 cmd: 'local',
                 act: '1',
-                tid: Math.floor(Math.random() * 100000).toString(),
+                tid: '10001',
                 data: liveKeys.map(k => ({ k }))
             }, false);
         }
@@ -1354,8 +1398,8 @@
         }
 
         function setWorkMode(mode) {
-            writeParameter('L019', mode.toString());
-            const modes = ['Self-Use', 'Feed-In', 'Backup'];
+            writeParameter('P651', mode.toString());
+            const modes = ['Self-Use', 'Backup', 'User-Defined', 'Off-Grid'];
             log(`🔄 Setting work mode: ${modes[mode]}`);
         }
 
