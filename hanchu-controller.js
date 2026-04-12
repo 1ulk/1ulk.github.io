@@ -276,9 +276,9 @@
         function handleNotification(event) {
             const value = event.target.value;
             const data = new Uint8Array(value.buffer);
-            
-            log(`📨 Received ${data.length} bytes`);
-            
+
+            log(`📨 RX ${data.length} bytes | first byte: 0x${data[0]?.toString(16).padStart(2,'0') ?? '??'}`);
+
             try {
                 // Decrypt the response
                 const decrypted = AESHelper.decrypt(data);
@@ -286,40 +286,46 @@
                     log('❌ Decryption failed', 'error');
                     return;
                 }
+                log(`🔓 Decrypted ${decrypted.length} bytes | first byte: 0x${decrypted[0]?.toString(16).padStart(2,'0') ?? '??'}`);
 
                 // Check if LOCAL mode (starts with 0x03)
                 let jsonString;
                 if (decrypted[0] === 0x03) {
-                    // LOCAL MODE - extract JSON from packet
                     const dataLength = decrypted[4] | (decrypted[5] << 8);
                     const jsonBytes = decrypted.slice(6, 6 + dataLength);
                     jsonString = new TextDecoder().decode(jsonBytes);
-                    log('📦 LOCAL mode packet');
+                    log(`📦 LOCAL mode | declared len=${dataLength} extracted=${jsonBytes.length}`);
                 } else {
-                    // STANDARD MODE - raw JSON; strip trailing null bytes only
                     jsonString = new TextDecoder().decode(decrypted).replace(/\0+$/, '').trim();
-                    log('📄 STANDARD mode packet');
+                    log(`📄 STANDARD mode | json len=${jsonString.length}`);
                 }
 
-                log(`📄 JSON: ${jsonString.substring(0, 100)}...`);
+                log(`📄 JSON: ${jsonString.substring(0, 120)}`);
 
                 const parsed = JSON.parse(jsonString);
+                const items = parsed.data;
 
-                // Resolve any pending write confirmations (v === 0 means success)
-                if (parsed.data && Array.isArray(parsed.data)) {
-                    parsed.data.forEach(item => {
-                        const pending = pendingWrites.get(item.k);
-                        if (pending && item.v === 0) {
-                            pending.resolve();
-                        }
-                    });
+                if (!items || !Array.isArray(items)) {
+                    log(`⚠️ No data array in response (keys: ${Object.keys(parsed).join(', ')})`, 'error');
+                    return;
                 }
 
-                try { populateConfigInputs(parsed.data || []); } catch(e) { log(`⚠️ Config error: ${e.message}`, 'error'); }
+                log(`✅ Parsed ${items.length} items: ${items.map(i => `${i.k}=${i.v}`).join(', ')}`);
+
+                // Resolve any pending write confirmations (v === 0 means success)
+                items.forEach(item => {
+                    const pending = pendingWrites.get(item.k);
+                    if (pending && item.v === 0) {
+                        log(`✅ Write confirmed: ${item.k}`);
+                        pending.resolve();
+                    }
+                });
+
+                try { populateConfigInputs(items); } catch(e) { log(`⚠️ Config populate error: ${e.message}`, 'error'); }
                 updateUIWithData(parsed);
 
             } catch (error) {
-                log(`❌ Parse error: ${error.message} | raw: ${new TextDecoder().decode(new Uint8Array(event.target.value.buffer)).replace(/\0/g,'').substring(0,80)}`, 'error');
+                log(`❌ Handler error: ${error.message}`, 'error');
                 console.error(error);
             }
         }
