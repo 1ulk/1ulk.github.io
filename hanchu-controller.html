@@ -459,6 +459,87 @@
             color: #ef4444;
         }
 
+        /* ── Config Tab ─────────────────────────────────── */
+        .mode-selector {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .mode-btn {
+            flex: 1;
+            min-width: 120px;
+            padding: 12px 10px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            background: white;
+            color: #6b7280;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        .mode-btn.active {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .config-section { display: none; margin-top: 20px; }
+        .config-section.active { display: block; }
+        .config-sub-heading {
+            font-size: 13px;
+            font-weight: 700;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin: 18px 0 10px;
+        }
+        .config-sub-heading:first-child { margin-top: 0; }
+        .time-period-row {
+            display: grid;
+            grid-template-columns: 80px 1fr auto 1fr;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .time-period-label {
+            font-size: 13px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+        .time-sep {
+            font-size: 13px;
+            color: #9ca3af;
+            text-align: center;
+        }
+        .period-toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+        .period-toggle-row label {
+            font-size: 13px;
+            color: #6b7280;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        input[type="time"] {
+            padding: 9px 10px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #1f2937;
+            background: #f9fafb;
+            width: 100%;
+        }
+        input[type="time"]:focus { outline: none; border-color: #667eea; background: white; }
+        input[type="time"]:disabled { opacity: 0.35; }
+        .section-divider { height: 1px; background: #f3f4f6; margin: 16px 0; }
+
         /* ── Mobile ─────────────────────────────────────── */
         @media (max-width: 640px) {
             body { padding: 10px; }
@@ -527,6 +608,14 @@
                 justify-content: center;
             }
 
+            /* Config time period rows stack on narrow screens */
+            .time-period-row {
+                grid-template-columns: 70px 1fr auto 1fr;
+                gap: 6px;
+            }
+            input[type="time"] { font-size: 13px; padding: 8px 6px; }
+            .mode-btn { min-width: 0; font-size: 12px; padding: 10px 6px; }
+
             /* Log */
             .log-container { font-size: 11px; max-height: 160px; }
 
@@ -570,6 +659,7 @@
             <div class="tabs">
                 <button class="tab active" onclick="switchTab('monitor')">📊 Monitor</button>
                 <button class="tab" onclick="switchTab('control')">🎛️ Control</button>
+                <button class="tab" onclick="switchTab('config')">🔧 Config</button>
                 <button class="tab" onclick="switchTab('analytics')">📈 Analytics</button>
                 <button class="tab" onclick="switchTab('settings')">⚙️ Settings</button>
             </div>
@@ -753,29 +843,294 @@
                     <div class="card">
                         <div class="card-header">
                             <span class="card-icon">🔄</span>
-                            <h2>Work Mode</h2>
+                            <h2>Quick Actions</h2>
                         </div>
                         <div class="quick-actions">
-                            <button class="btn btn-secondary" onclick="setWorkMode(1)">
-                                Self-Consumption
-                            </button>
-                            <button class="btn btn-secondary" onclick="setWorkMode(2)">
-                                Backup
-                            </button>
-                            <button class="btn btn-secondary" onclick="setWorkMode(3)">
-                                User-Defined
-                            </button>
-                            <button class="btn btn-secondary" onclick="setWorkMode(4)">
-                                Off-Grid
-                            </button>
-                        </div>
-                        <div style="margin-top: 15px;">
                             <button class="btn btn-primary" onclick="refreshAllData()">
-                                🔄 Refresh All Data
+                                🔄 Refresh Data
+                            </button>
+                            <button class="btn btn-secondary" onclick="switchTab('config'); document.querySelectorAll('.tab').forEach((t,i)=>{t.classList.toggle('active',i===2)});">
+                                🔧 Configure Mode
                             </button>
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- Config Tab -->
+            <div id="configTab" class="tab-content">
+
+                <!-- Mode selector card -->
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon">🔧</span>
+                        <h2>Work Mode Configuration</h2>
+                    </div>
+                    <div class="mode-selector">
+                        <button class="mode-btn active" data-mode="selfconsumption" onclick="switchConfigMode('selfconsumption')">🏠 Self-Consumption</button>
+                        <button class="mode-btn" data-mode="backup" onclick="switchConfigMode('backup')">🛡️ Backup</button>
+                        <button class="mode-btn" data-mode="userdefined" onclick="switchConfigMode('userdefined')">🛠️ User Defined</button>
+                        <button class="mode-btn" data-mode="offgrid" onclick="switchConfigMode('offgrid')">🔋 Off-Grid</button>
+                    </div>
+                </div>
+
+                <!-- Self-Consumption -->
+                <div id="config-selfconsumption" class="config-section active">
+                    <div class="card">
+                        <div class="card-header"><span class="card-icon">🏠</span><h2>Self-Consumption Settings</h2></div>
+                        <div class="config-sub-heading">Battery SOC Limits</div>
+                        <div class="control-slider">
+                            <div class="slider-header">
+                                <span class="slider-label">Max Charge SOC (P647)</span>
+                                <span class="slider-value" id="sc-p647-val">90%</span>
+                            </div>
+                            <input type="range" min="0" max="100" value="90" data-param="P647"
+                                   oninput="document.getElementById('sc-p647-val').textContent=this.value+'%'">
+                        </div>
+                        <div class="control-slider">
+                            <div class="slider-header">
+                                <span class="slider-label">On-Grid Discharge Min (P648)</span>
+                                <span class="slider-value" id="sc-p648-val">10%</span>
+                            </div>
+                            <input type="range" min="0" max="100" value="10" data-param="P648"
+                                   oninput="document.getElementById('sc-p648-val').textContent=this.value+'%'">
+                        </div>
+                        <div class="control-slider">
+                            <div class="slider-header">
+                                <span class="slider-label">Off-Grid Discharge Min (P772)</span>
+                                <span class="slider-value" id="sc-p772-val">10%</span>
+                            </div>
+                            <input type="range" min="0" max="100" value="10" data-param="P772"
+                                   oninput="document.getElementById('sc-p772-val').textContent=this.value+'%'">
+                        </div>
+                        <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px;"
+                                onclick="applyModeConfig('selfconsumption', 0)">
+                            Apply Self-Consumption Mode
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Backup -->
+                <div id="config-backup" class="config-section">
+                    <div class="card">
+                        <div class="card-header"><span class="card-icon">🛡️</span><h2>Backup Mode Settings</h2></div>
+                        <div class="config-sub-heading">Grid Charge</div>
+                        <div class="control-slider">
+                            <div class="slider-header">
+                                <span class="slider-label">Grid → Battery Charge Max (L074)</span>
+                                <span class="slider-value" id="bk-l074-val">100%</span>
+                            </div>
+                            <input type="range" min="0" max="100" value="100" data-param="L074"
+                                   oninput="document.getElementById('bk-l074-val').textContent=this.value+'%'">
+                        </div>
+                        <div class="section-divider"></div>
+                        <div class="config-sub-heading">Battery SOC Limits</div>
+                        <div class="control-slider">
+                            <div class="slider-header">
+                                <span class="slider-label">Maximum Charge (P647)</span>
+                                <span class="slider-value" id="bk-p647-val">90%</span>
+                            </div>
+                            <input type="range" min="0" max="100" value="90" data-param="P647"
+                                   oninput="document.getElementById('bk-p647-val').textContent=this.value+'%'">
+                        </div>
+                        <div class="control-slider">
+                            <div class="slider-header">
+                                <span class="slider-label">On-Grid Discharge Min (P648)</span>
+                                <span class="slider-value" id="bk-p648-val">10%</span>
+                            </div>
+                            <input type="range" min="0" max="100" value="10" data-param="P648"
+                                   oninput="document.getElementById('bk-p648-val').textContent=this.value+'%'">
+                        </div>
+                        <div class="control-slider">
+                            <div class="slider-header">
+                                <span class="slider-label">Off-Grid Discharge Min (P772)</span>
+                                <span class="slider-value" id="bk-p772-val">10%</span>
+                            </div>
+                            <input type="range" min="0" max="100" value="10" data-param="P772"
+                                   oninput="document.getElementById('bk-p772-val').textContent=this.value+'%'">
+                        </div>
+                        <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px;"
+                                onclick="applyModeConfig('backup', 1)">
+                            Apply Backup Mode
+                        </button>
+                    </div>
+                </div>
+
+                <!-- User Defined -->
+                <div id="config-userdefined" class="config-section">
+                    <div class="card">
+                        <div class="card-header"><span class="card-icon">🛠️</span><h2>User Defined Settings</h2></div>
+
+                        <div class="config-sub-heading">Charge Time Periods</div>
+                        <!-- Period 1 (always active) -->
+                        <div class="time-period-row">
+                            <span class="time-period-label">Period 1</span>
+                            <input type="time" data-param="L005" value="00:00">
+                            <span class="time-sep">→</span>
+                            <input type="time" data-param="L006" value="06:00">
+                        </div>
+                        <!-- Period 2 -->
+                        <div class="period-toggle-row">
+                            <label>
+                                <input type="checkbox" checked data-period-for="L007,L008"
+                                       onchange="togglePeriod(this,'ud-p2-start','ud-p2-end')">
+                                Period 2
+                            </label>
+                        </div>
+                        <div class="time-period-row">
+                            <span></span>
+                            <input type="time" id="ud-p2-start" data-param="L007" value="12:00">
+                            <span class="time-sep">→</span>
+                            <input type="time" id="ud-p2-end"   data-param="L008" value="18:00">
+                        </div>
+                        <!-- Period 3 -->
+                        <div class="period-toggle-row">
+                            <label>
+                                <input type="checkbox" data-period-for="L009,L010"
+                                       onchange="togglePeriod(this,'ud-p3-start','ud-p3-end')">
+                                Period 3
+                            </label>
+                        </div>
+                        <div class="time-period-row">
+                            <span></span>
+                            <input type="time" id="ud-p3-start" data-param="L009" value="00:00" disabled>
+                            <span class="time-sep">→</span>
+                            <input type="time" id="ud-p3-end"   data-param="L010" value="00:00" disabled>
+                        </div>
+
+                        <div class="section-divider"></div>
+                        <div class="config-sub-heading">Discharge Time Periods</div>
+                        <!-- Period 4 -->
+                        <div class="period-toggle-row">
+                            <label>
+                                <input type="checkbox" data-period-for="L011,L012"
+                                       onchange="togglePeriod(this,'ud-p4-start','ud-p4-end')">
+                                Period 4
+                            </label>
+                        </div>
+                        <div class="time-period-row">
+                            <span></span>
+                            <input type="time" id="ud-p4-start" data-param="L011" value="00:00" disabled>
+                            <span class="time-sep">→</span>
+                            <input type="time" id="ud-p4-end"   data-param="L012" value="00:00" disabled>
+                        </div>
+                        <!-- Period 5 -->
+                        <div class="period-toggle-row">
+                            <label>
+                                <input type="checkbox" data-period-for="L013,L014"
+                                       onchange="togglePeriod(this,'ud-p5-start','ud-p5-end')">
+                                Period 5
+                            </label>
+                        </div>
+                        <div class="time-period-row">
+                            <span></span>
+                            <input type="time" id="ud-p5-start" data-param="L013" value="00:00" disabled>
+                            <span class="time-sep">→</span>
+                            <input type="time" id="ud-p5-end"   data-param="L014" value="00:00" disabled>
+                        </div>
+                        <!-- Period 6 -->
+                        <div class="period-toggle-row">
+                            <label>
+                                <input type="checkbox" data-period-for="L015,L016"
+                                       onchange="togglePeriod(this,'ud-p6-start','ud-p6-end')">
+                                Period 6
+                            </label>
+                        </div>
+                        <div class="time-period-row">
+                            <span></span>
+                            <input type="time" id="ud-p6-start" data-param="L015" value="00:00" disabled>
+                            <span class="time-sep">→</span>
+                            <input type="time" id="ud-p6-end"   data-param="L016" value="00:00" disabled>
+                        </div>
+
+                        <div class="section-divider"></div>
+                        <div class="config-sub-heading">Power Limits</div>
+                        <div class="control-slider">
+                            <div class="slider-header">
+                                <span class="slider-label">Charge Power Max (L017)</span>
+                                <span class="slider-value" id="ud-l017-val">5000W</span>
+                            </div>
+                            <input type="range" min="0" max="5000" step="100" value="5000" data-param="L017"
+                                   oninput="document.getElementById('ud-l017-val').textContent=this.value+'W'">
+                        </div>
+                        <div class="control-slider">
+                            <div class="slider-header">
+                                <span class="slider-label">Discharge Power Max (L018)</span>
+                                <span class="slider-value" id="ud-l018-val">5000W</span>
+                            </div>
+                            <input type="range" min="0" max="5000" step="100" value="5000" data-param="L018"
+                                   oninput="document.getElementById('ud-l018-val').textContent=this.value+'W'">
+                        </div>
+
+                        <div class="section-divider"></div>
+                        <div class="config-sub-heading">Battery SOC Limits</div>
+                        <div class="control-slider">
+                            <div class="slider-header">
+                                <span class="slider-label">Maximum Charge (P647)</span>
+                                <span class="slider-value" id="ud-p647-val">90%</span>
+                            </div>
+                            <input type="range" min="0" max="100" value="90" data-param="P647"
+                                   oninput="document.getElementById('ud-p647-val').textContent=this.value+'%'">
+                        </div>
+                        <div class="control-slider">
+                            <div class="slider-header">
+                                <span class="slider-label">On-Grid Discharge Min (P648)</span>
+                                <span class="slider-value" id="ud-p648-val">10%</span>
+                            </div>
+                            <input type="range" min="0" max="100" value="10" data-param="P648"
+                                   oninput="document.getElementById('ud-p648-val').textContent=this.value+'%'">
+                        </div>
+                        <div class="control-slider">
+                            <div class="slider-header">
+                                <span class="slider-label">Off-Grid Discharge Min (P772)</span>
+                                <span class="slider-value" id="ud-p772-val">10%</span>
+                            </div>
+                            <input type="range" min="0" max="100" value="10" data-param="P772"
+                                   oninput="document.getElementById('ud-p772-val').textContent=this.value+'%'">
+                        </div>
+                        <div class="control-slider">
+                            <div class="slider-header">
+                                <span class="slider-label">Grid → Battery Charge Max (L074)</span>
+                                <span class="slider-value" id="ud-l074-val">100%</span>
+                            </div>
+                            <input type="range" min="0" max="100" value="100" data-param="L074"
+                                   oninput="document.getElementById('ud-l074-val').textContent=this.value+'%'">
+                        </div>
+                        <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px;"
+                                onclick="applyModeConfig('userdefined', 2)">
+                            Apply User Defined Mode
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Off-Grid -->
+                <div id="config-offgrid" class="config-section">
+                    <div class="card">
+                        <div class="card-header"><span class="card-icon">🔋</span><h2>Off-Grid Settings</h2></div>
+                        <div class="config-sub-heading">Battery SOC Limits</div>
+                        <div class="control-slider">
+                            <div class="slider-header">
+                                <span class="slider-label">Max Charge (P647)</span>
+                                <span class="slider-value" id="og-p647-val">90%</span>
+                            </div>
+                            <input type="range" min="0" max="100" value="90" data-param="P647"
+                                   oninput="document.getElementById('og-p647-val').textContent=this.value+'%'">
+                        </div>
+                        <div class="control-slider">
+                            <div class="slider-header">
+                                <span class="slider-label">Min Discharge (P772)</span>
+                                <span class="slider-value" id="og-p772-val">10%</span>
+                            </div>
+                            <input type="range" min="0" max="100" value="10" data-param="P772"
+                                   oninput="document.getElementById('og-p772-val').textContent=this.value+'%'">
+                        </div>
+                        <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px;"
+                                onclick="applyModeConfig('offgrid', 3)">
+                            Apply Off-Grid Mode
+                        </button>
+                    </div>
+                </div>
+
             </div>
 
             <!-- Analytics Tab -->
@@ -1398,9 +1753,70 @@
         }
 
         function setWorkMode(mode) {
-            writeParameter('P651', mode.toString());
-            const modes = ['Self-Use', 'Backup', 'User-Defined', 'Off-Grid'];
+            writeParameter('P651', mode);
+            const modes = ['Self-Consumption', 'Backup', 'User Defined', 'Off-Grid'];
             log(`🔄 Setting work mode: ${modes[mode]}`);
+        }
+
+        // ── Config tab ────────────────────────────────────
+
+        function switchConfigMode(mode) {
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector(`.mode-btn[data-mode="${mode}"]`).classList.add('active');
+            document.querySelectorAll('.config-section').forEach(s => s.classList.remove('active'));
+            document.getElementById(`config-${mode}`).classList.add('active');
+        }
+
+        function togglePeriod(checkbox, startId, endId) {
+            const start = document.getElementById(startId);
+            const end   = document.getElementById(endId);
+            start.disabled = !checkbox.checked;
+            end.disabled   = !checkbox.checked;
+        }
+
+        function timeToMinutes(timeStr) {
+            if (!timeStr) return 0;
+            const [h, m] = timeStr.split(':').map(Number);
+            return h * 60 + m;
+        }
+
+        async function applyModeConfig(modeKey, modeNum) {
+            if (!device || !device.gatt.connected) {
+                log('❌ Not connected', 'error');
+                return;
+            }
+
+            const section = document.getElementById(`config-${modeKey}`);
+            const modeNames = { selfconsumption: 'Self-Consumption', backup: 'Backup', userdefined: 'User Defined', offgrid: 'Off-Grid' };
+            log(`🔧 Applying ${modeNames[modeKey]} (L019=${modeNum})…`);
+
+            // Build set of params forced to 0 by disabled period toggles
+            const forcedZero = new Set();
+            section.querySelectorAll('input[data-period-for]').forEach(cb => {
+                if (!cb.checked) {
+                    cb.dataset.periodFor.split(',').forEach(p => forcedZero.add(p.trim()));
+                }
+            });
+
+            // Collect param → value from all data-param inputs
+            const writes = {};
+            section.querySelectorAll('[data-param]').forEach(el => {
+                const param = el.dataset.param;
+                if (forcedZero.has(param)) {
+                    writes[param] = 0;
+                } else if (el.type === 'time') {
+                    writes[param] = timeToMinutes(el.value);
+                } else {
+                    writes[param] = parseInt(el.value) || 0;
+                }
+            });
+
+            // Write work mode first, then all parameters
+            await writeParameter('P651', modeNum);
+            for (const [k, v] of Object.entries(writes)) {
+                await writeParameter(k, v);
+            }
+            log(`✅ ${modeNames[modeKey]} configuration applied`, 'success');
         }
 
         function writePowerLimits() {
