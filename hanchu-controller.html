@@ -776,8 +776,9 @@
         const READ_CHAR_UUID = '0000ff01-0000-1000-8000-00805f9b34fb';
         const WRITE_CHAR_UUID = '0000ff02-0000-1000-8000-00805f9b34fb';
 
-        // Static AES key (same as Swift code)
-        const STATIC_KEY = '48435F4553535F4C4F474745525F4B59'; // HEX string
+        // AES constants — must match Swift AESHelper exactly
+        const BASE_KEY = 'gxkj@2099@1914zy';
+        const BASE_IV  = '9z64Qr8mZH7Pg8d1';
 
         // Global state
         let device = null;
@@ -805,86 +806,108 @@
         let gridChart = null;
         let temperatureChart = null;
 
-        // AES Encryption Helper
+        // AES Encryption Helper — matches Swift AESHelper exactly (AES-128-CFB8)
         const AESHelper = {
-            // Generate dynamic key from random fix
-            generateDynamicKey(randomFix) {
-                const randomFixStr = randomFix.toString().padStart(6, '0');
-                const keyBytes = CryptoJS.enc.Hex.parse(STATIC_KEY);
-                const fixBytes = CryptoJS.enc.Utf8.parse(randomFixStr);
-                
-                // XOR operation (simplified - should match Swift logic)
-                let result = [];
-                for (let i = 0; i < 16; i++) {
-                    result.push(keyBytes.words[i >> 2] ^ (fixBytes.words[(i % 6) >> 2] || 0));
-                }
-                
-                dynamicKey = CryptoJS.lib.WordArray.create(result);
-                log(`🔑 Generated dynamic key`);
-                return dynamicKey;
-            },
-
-            // Encrypt data with dynamic key using AES-128-ECB
-            encrypt(data) {
-                if (!dynamicKey) {
-                    log('❌ No dynamic key!', 'error');
-                    return null;
-                }
-
-                const encrypted = CryptoJS.AES.encrypt(
-                    CryptoJS.lib.WordArray.create(data),
-                    dynamicKey,
-                    {
-                        mode: CryptoJS.mode.ECB,
-                        padding: CryptoJS.pad.Pkcs7
-                    }
-                );
-
-                return new Uint8Array(encrypted.ciphertext.words.flatMap(w => [
-                    (w >> 24) & 0xFF,
-                    (w >> 16) & 0xFF,
-                    (w >> 8) & 0xFF,
-                    w & 0xFF
-                ]));
-            },
-
-            // Decrypt data with dynamic key using AES-128-ECB
-            decrypt(encryptedData) {
-                if (!dynamicKey) {
-                    log('❌ No dynamic key!', 'error');
-                    return null;
-                }
-
-                try {
-                    // Convert Uint8Array to WordArray
-                    const words = [];
-                    for (let i = 0; i < encryptedData.length; i += 4) {
-                        words.push(
-                            (encryptedData[i] << 24) |
-                            (encryptedData[i + 1] << 16) |
-                            (encryptedData[i + 2] << 8) |
-                            encryptedData[i + 3]
-                        );
-                    }
-                    const cipherParams = CryptoJS.lib.CipherParams.create({
-                        ciphertext: CryptoJS.lib.WordArray.create(words)
-                    });
-
-                    const decrypted = CryptoJS.AES.decrypt(
-                        cipherParams,
-                        dynamicKey,
-                        {
-                            mode: CryptoJS.mode.ECB,
-                            padding: CryptoJS.pad.Pkcs7
-                        }
+            // Convert Uint8Array → CryptoJS WordArray (big-endian)
+            _toWordArray(bytes) {
+                const words = [];
+                for (let i = 0; i < bytes.length; i += 4) {
+                    words.push(
+                        ((bytes[i]   || 0) << 24) |
+                        ((bytes[i+1] || 0) << 16) |
+                        ((bytes[i+2] || 0) <<  8) |
+                        ((bytes[i+3] || 0))
                     );
+                }
+                return CryptoJS.lib.WordArray.create(words, bytes.length);
+            },
 
-                    const decryptedBytes = [];
-                    for (let i = 0; i < decrypted.sigBytes; i++) {
-                        decryptedBytes.push((decrypted.words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xFF);
+            // Encrypt one 16-byte block with AES-128-ECB, return first 16 bytes
+            // (matches Swift CCCrypt kCCEncrypt / kCCAlgorithmAES / kCCOptionECBMode)
+            _ecbBlock(keyBytes, blockBytes) {
+                const key = this._toWordArray(keyBytes);
+                const blk = this._toWordArray(blockBytes);
+                const enc = CryptoJS.AES.encrypt(blk, key, {
+                    mode: CryptoJS.mode.ECB,
+                    padding: CryptoJS.pad.Pkcs7   // input is 16 bytes; PKCS7 adds a padding block
+                });
+                // ECB encrypts blocks independently — first 16 bytes = encrypt(blockBytes)
+                const w = enc.ciphertext.words;
+                const out = new Uint8Array(16);
+                for (let i = 0; i < 4; i++) {
+                    out[i*4]   = (w[i] >>> 24) & 0xFF;
+                    out[i*4+1] = (w[i] >>> 16) & 0xFF;
+                    out[i*4+2] = (w[i] >>>  8) & 0xFF;
+                    out[i*4+3] =  w[i]          & 0xFF;
+                }
+                return out;
+            },
+
+            // Generate dynamic key — matches Swift generateDynamicKey(randomFix:)
+            // offset = ASCII(lastChar) % 10; replace BASE_KEY[offset..offset+5] with randomFix
+            generateDynamicKey(fix) {
+                if (fix.length !== 6) {
+                    console.error('randomFix must be exactly 6 characters');
+                    return BASE_KEY;
+                }
+                const offset = fix.charCodeAt(5) % 10;
+                const keyArr = BASE_KEY.split('');
+                for (let i = 0; i < 6; i++) {
+                    if (offset + i < keyArr.length) keyArr[offset + i] = fix[i];
+                }
+                const dynKey = keyArr.join('');
+                log(`🔑 Dynamic key generated (offset=${offset})`);
+                return dynKey;
+            },
+
+            // Internal CFB8 core — isDecrypt controls feedback byte
+            _cfb8(data, key) {
+                const enc   = new TextEncoder();
+                const keyB  = enc.encode(key).slice(0, 16);
+                let   iv    = enc.encode(BASE_IV).slice(0, 16);
+                const input = (data instanceof Uint8Array) ? data : new Uint8Array(data);
+                const output = new Uint8Array(input.length);
+
+                for (let i = 0; i < input.length; i++) {
+                    const ks      = this._ecbBlock(keyB, iv);
+                    const encByte = ks[0] ^ input[i];
+                    output[i]     = encByte;
+                    // CFB8 feedback: shift IV left 1 byte, append ciphertext byte
+                    const newIv = new Uint8Array(16);
+                    newIv.set(iv.subarray(1));
+                    newIv[15] = encByte;
+                    iv = newIv;
+                }
+                return output;
+            },
+
+            // Encrypt with current dynamic key (CFB8)
+            encrypt(data) {
+                if (!dynamicKey) { log('❌ No dynamic key!', 'error'); return null; }
+                return this._cfb8(data, dynamicKey);
+            },
+
+            // Decrypt with current dynamic key (CFB8)
+            // For CFB8, decrypt = encrypt the IV block then XOR, but feedback uses ciphertext byte
+            decrypt(encryptedData) {
+                if (!dynamicKey) { log('❌ No dynamic key!', 'error'); return null; }
+                try {
+                    const enc   = new TextEncoder();
+                    const keyB  = enc.encode(dynamicKey).slice(0, 16);
+                    let   iv    = enc.encode(BASE_IV).slice(0, 16);
+                    const input = (encryptedData instanceof Uint8Array) ? encryptedData : new Uint8Array(encryptedData);
+                    const output = new Uint8Array(input.length);
+
+                    for (let i = 0; i < input.length; i++) {
+                        const ks      = this._ecbBlock(keyB, iv);
+                        output[i]     = ks[0] ^ input[i];
+                        // CFB8 decrypt feedback: shift IV left, append ciphertext byte (not plaintext)
+                        const newIv = new Uint8Array(16);
+                        newIv.set(iv.subarray(1));
+                        newIv[15] = input[i];
+                        iv = newIv;
                     }
-
-                    return new Uint8Array(decryptedBytes);
+                    return output;
                 } catch (error) {
                     log(`❌ Decryption error: ${error.message}`, 'error');
                     return null;
@@ -970,6 +993,7 @@
             readCharacteristic = null;
             writeCharacteristic = null;
             dynamicKey = null;
+            randomFix = null;
             
             document.getElementById('statusIndicator').classList.remove('connected');
             document.getElementById('statusText').textContent = 'Disconnected';
@@ -982,26 +1006,27 @@
         }
 
         async function initializeConnection() {
-            // Generate random fix (must be exactly 6 digits: 100000-999999)
-            randomFix = Math.floor(Math.random() * 900000) + 100000;
+            // Generate a random 6-character alphanumeric string
+            // Swift parseRandomFix expects: [0x05][6 UTF-8 bytes]
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            randomFix = '';
+            for (let i = 0; i < 6; i++) {
+                randomFix += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
             log(`🔑 Generated random fix: ${randomFix}`);
 
-            // Build random fix packet (7 bytes, starts with 0x05)
+            // Packet: [0x05][6 UTF-8 bytes of randomFix] = 7 bytes total
+            const fixBytes = new TextEncoder().encode(randomFix); // 6 bytes (all ASCII)
             const randomFixPacket = new Uint8Array(7);
             randomFixPacket[0] = 0x05;
-            randomFixPacket[1] = (randomFix >> 16) & 0xFF;
-            randomFixPacket[2] = (randomFix >> 8) & 0xFF;
-            randomFixPacket[3] = randomFix & 0xFF;
-            randomFixPacket[4] = 0x00;
-            randomFixPacket[5] = 0x00;
-            randomFixPacket[6] = 0x00;
+            randomFixPacket.set(fixBytes, 1);
 
             await writeCharacteristic.writeValue(randomFixPacket);
             log('📤 Sent random fix packet');
 
-            // Generate dynamic key
-            AESHelper.generateDynamicKey(randomFix);
-            
+            // Derive dynamic key from the random fix and store globally
+            dynamicKey = AESHelper.generateDynamicKey(randomFix);
+
             // Wait for key exchange, then read initial data
             setTimeout(() => {
                 refreshAllData();
