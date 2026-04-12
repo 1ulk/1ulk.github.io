@@ -4,8 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hanchu BLE Controller</title>
+    
+    <!-- Crypto-js for AES encryption -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Alternative: <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.js"></script> -->
+    
+    <!-- Chart.js for analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+    <!-- Alternative: <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script> -->
+    <!-- Alternative: <script src="https://unpkg.com/chart.js@4.4.1/dist/chart.umd.js"></script> -->
+    
     <style>
         * {
             margin: 0;
@@ -974,8 +982,8 @@
         }
 
         async function initializeConnection() {
-            // Generate random fix
-            randomFix = Math.floor(Math.random() * 1000000);
+            // Generate random fix (must be exactly 6 digits: 100000-999999)
+            randomFix = Math.floor(Math.random() * 900000) + 100000;
             log(`🔑 Generated random fix: ${randomFix}`);
 
             // Build random fix packet (7 bytes, starts with 0x05)
@@ -1232,6 +1240,12 @@
 
         // Chart functions
         function initializeCharts() {
+            if (typeof Chart === 'undefined') {
+                log('⚠️ Chart.js not loaded - Analytics disabled', 'error');
+                console.error('Chart.js failed to load. Charts will not be available.');
+                return;
+            }
+
             const chartConfig = {
                 type: 'line',
                 options: {
@@ -1311,7 +1325,7 @@
         }
 
         function updateCharts() {
-            if (!batteryChart) return;
+            if (!batteryChart || typeof Chart === 'undefined') return;
 
             const labels = historicalData.timestamps.map(t => t.toLocaleTimeString());
 
@@ -1386,6 +1400,30 @@
         if (!navigator.bluetooth) {
             alert('⚠️ Web Bluetooth is not supported. Please use Chrome, Edge, or Opera.');
         }
+
+        // Verify required libraries loaded
+        window.addEventListener('DOMContentLoaded', () => {
+            const issues = [];
+            
+            if (typeof CryptoJS === 'undefined') {
+                issues.push('❌ CryptoJS failed to load - Encryption will not work');
+            } else {
+                console.log('✅ CryptoJS loaded successfully');
+            }
+            
+            if (typeof Chart === 'undefined') {
+                issues.push('⚠️ Chart.js failed to load - Analytics charts disabled');
+                // Hide analytics tab if Chart.js failed
+                document.querySelector('.tab:nth-child(3)')?.remove();
+            } else {
+                console.log('✅ Chart.js loaded successfully');
+            }
+            
+            if (issues.length > 0) {
+                console.error('Library Loading Issues:', issues);
+                alert(issues.join('\n'));
+            }
+        });
     </script>
 </body>
 </html>
