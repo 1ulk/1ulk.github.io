@@ -711,7 +711,8 @@
         // Populate config form fields from incoming BLE data
         function populateConfigInputs(items) {
             if (!items?.length) return;
-            const modeMap = { 0: 'selfconsumption', 1: 'backup', 2: 'userdefined', 3: 'offgrid' };
+            // Has to start at 1
+            const modeMap = { 1: 'selfconsumption', 2: 'backup', 3: 'userdefined', 4: 'offgrid' };
             let touchedTimeInput = false;
 
             items.forEach(({ k, v }) => {
