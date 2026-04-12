@@ -1027,9 +1027,14 @@
             // Derive dynamic key from the random fix and store globally
             dynamicKey = AESHelper.generateDynamicKey(randomFix);
 
-            // Wait for key exchange, then read initial data
-            setTimeout(() => {
-                refreshAllData();
+            // Wait for key exchange, then start live polling
+            setTimeout(async () => {
+                await refreshStaticData();       // device info once
+                await refreshAllData();          // first live snapshot
+                // Auto-start 1s live refresh
+                autoRefreshInterval = setInterval(refreshAllData, 1000);
+                document.getElementById('autoRefreshCheckbox').checked = true;
+                log('⏰ Live refresh started (1s)', 'success');
             }, 1000);
         }
 
@@ -1204,30 +1209,40 @@
             log(`✏️ Writing ${key} = ${value}`, 'success');
         }
 
+        // Request live telemetry — all keys in one BLE packet
         async function refreshAllData() {
             if (!device || !device.gatt.connected) return;
 
-            log('🔄 Refreshing all data...');
-            
-            const keys = [
-                'soc', 'B034', 'B035', 'B043', 'P069', 'P070',
+            const liveKeys = [
+                'B034', 'B035', 'B043', 'P069', 'P070',
                 'P024', 'P025', 'P026', 'P027', 'P060',
-                'P044', 'P045', 'P053', 'P055',
-                'P002', 'B002', 'P006', 'L023'
+                'P044', 'P045', 'P053', 'P055'
             ];
-            
-            for (const key of keys) {
-                await readParameter(key);
-                await new Promise(resolve => setTimeout(resolve, 150));
-            }
+
+            await sendCommand({
+                cmd: 'local',
+                act: '1',
+                tid: Math.floor(Math.random() * 100000).toString(),
+                data: liveKeys.map(k => ({ k }))
+            }, false);
+        }
+
+        // Request static device info once (serial, firmware) — one packet
+        async function refreshStaticData() {
+            await sendCommand({
+                cmd: 'local',
+                act: '1',
+                tid: Math.floor(Math.random() * 100000).toString(),
+                data: ['P002', 'B002', 'P006', 'L023'].map(k => ({ k }))
+            }, false);
         }
 
         function toggleAutoRefresh() {
             const enabled = document.getElementById('autoRefreshCheckbox').checked;
-            
+
             if (enabled) {
-                log('⏰ Auto-refresh enabled (5s interval)', 'success');
-                autoRefreshInterval = setInterval(refreshAllData, 5000);
+                log('⏰ Auto-refresh enabled (1s interval)', 'success');
+                autoRefreshInterval = setInterval(refreshAllData, 1000);
             } else {
                 log('⏸️ Auto-refresh disabled');
                 if (autoRefreshInterval) {
