@@ -559,7 +559,7 @@
             await sendCommand({
                 cmd: 'local', act: '1',
                 tid: '10001',
-                data: [P.BMS_SOC,P.BATTERY_TERMINAL_VOLTAGE,P.BATTERY_CURRENT,P.BATTERY_POWER,P.BATTERY_TEMPERATURE,
+                data: [P.BATTERY_SOC,P.BATTERY_TERMINAL_VOLTAGE,P.BATTERY_CURRENT,P.BATTERY_POWER,P.BATTERY_TEMPERATURE,
                        P.PV1_VOLTAGE,P.PV1_CURRENT,P.PV2_VOLTAGE,P.PV2_CURRENT,P.PV_POWER_TOTAL,
                        P.GRID_VOLTAGE,P.GRID_CURRENT,P.GRID_FREQUENCY,P.GRID_ACTIVE_POWER].map(k => ({ k }))
             }, false);
