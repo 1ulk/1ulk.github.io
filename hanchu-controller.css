@@ -45,20 +45,20 @@
             text-overflow: ellipsis;
         }
 
-        .warning-bar .warning-divider {
-            opacity: 0.4;
-            flex-shrink: 0;
+        .footer {
+            text-align: center;
+            padding: 24px;
+            margin-top: 12px;
         }
 
-        .warning-bar a {
-            color: #fde68a;
+        .footer a {
+            color: rgba(255,255,255,0.6);
             text-decoration: none;
-            font-weight: 600;
-            flex-shrink: 0;
+            font-size: 13px;
         }
 
-        .warning-bar a:hover {
-            color: #fff;
+        .footer a:hover {
+            color: rgba(255,255,255,0.9);
             text-decoration: underline;
         }
 
