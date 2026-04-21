@@ -188,12 +188,77 @@
             if (countEl) { countEl.textContent = '0'; countEl.classList.remove('has-errors'); }
         }
 
+        // Retry getPrimaryService with exponential backoff — GATT service discovery
+        // on iOS/macOS can lag behind the connect callback by several hundred ms.
+        async function getPrimaryServiceWithRetry(server, uuid, maxAttempts = 5, baseDelayMs = 300) {
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                try {
+                    const svc = await server.getPrimaryService(uuid);
+                    if (attempt > 1) log(`✅ Service found on attempt ${attempt}`, 'success');
+                    return svc;
+                } catch (err) {
+                    const isLast = attempt === maxAttempts;
+                    const delay = baseDelayMs * attempt;
+                    log(`⏳ Service not ready (attempt ${attempt}/${maxAttempts}): ${err.message}${isLast ? '' : ` — retrying in ${delay}ms`}`, isLast ? 'error' : 'info');
+                    if (isLast) throw err;
+                    await new Promise(r => setTimeout(r, delay));
+                }
+            }
+        }
+
+        async function discoverAllServices() {
+            document.getElementById('debugPanel').classList.add('open');
+            log('🔍 Scanning to discover device services...');
+            let discoverDevice;
+            try {
+                discoverDevice = await navigator.bluetooth.requestDevice({
+                    filters: [{ namePrefix: 'HC:' }],
+                    // Declare all UUIDs we want permission to inspect
+                    optionalServices: [
+                        SERVICE_UUID,
+                        '0000ff00-0000-1000-8000-00805f9b34fb',
+                        '0000fff0-0000-1000-8000-00805f9b34fb',
+                        '0000ffe0-0000-1000-8000-00805f9b34fb',
+                        '0000ffd0-0000-1000-8000-00805f9b34fb',
+                        '0000ffc0-0000-1000-8000-00805f9b34fb',
+                        'generic_access', 'generic_attribute', 'device_information'
+                    ]
+                });
+                log(`📱 Device: ${discoverDevice.name}`, 'success');
+                const srv = await discoverDevice.gatt.connect();
+                log('🔗 GATT connected — enumerating services…');
+                await new Promise(r => setTimeout(r, 800)); // let discovery settle
+                const services = await srv.getPrimaryServices();
+                if (services.length === 0) {
+                    log('⚠️ No services returned — browser may have blocked unlisted UUIDs', 'error');
+                } else {
+                    log(`📋 Found ${services.length} service(s):`, 'success');
+                    for (const svc of services) {
+                        log(`  SERVICE: ${svc.uuid}`, 'info');
+                        try {
+                            const chars = await svc.getCharacteristics();
+                            for (const c of chars) {
+                                log(`    CHAR: ${c.uuid}  [${c.properties ? Object.keys(c.properties).filter(p => c.properties[p]).join(', ') : '?'}]`, 'info');
+                            }
+                        } catch (e) {
+                            log(`    (chars unavailable: ${e.message})`, 'error');
+                        }
+                    }
+                }
+                discoverDevice.gatt.disconnect();
+            } catch (err) {
+                log(`❌ Discovery failed: ${err.message}`, 'error');
+                if (discoverDevice?.gatt?.connected) discoverDevice.gatt.disconnect();
+            }
+        }
+
         async function connectDevice() {
             // Auto-open the debug panel so connection steps are visible immediately
             document.getElementById('debugPanel').classList.add('open');
             try {
                 log('🔍 Scanning for Hanchu devices...');
-                
+                log(`ℹ️ Expecting service UUID: ${SERVICE_UUID}`);
+
                 device = await navigator.bluetooth.requestDevice({
                     filters: [
                         { namePrefix: 'HC:' }
@@ -206,12 +271,15 @@
                 const server = await device.gatt.connect();
                 log('🔗 Connected to GATT server', 'success');
 
-                const service = await server.getPrimaryService(SERVICE_UUID);
+                // Small pause so the OS can finish GATT service discovery
+                await new Promise(r => setTimeout(r, 500));
+
+                const service = await getPrimaryServiceWithRetry(server, SERVICE_UUID);
                 log('✅ Got BLE service', 'success');
 
                 readCharacteristic = await service.getCharacteristic(READ_CHAR_UUID);
                 writeCharacteristic = await service.getCharacteristic(WRITE_CHAR_UUID);
-                log('✅ Got characteristics', 'success');
+                log(`✅ Got characteristics (R:${READ_CHAR_UUID.slice(-4)} W:${WRITE_CHAR_UUID.slice(-4)})`, 'success');
 
                 await readCharacteristic.startNotifications();
                 readCharacteristic.addEventListener('characteristicvaluechanged', handleNotification);
