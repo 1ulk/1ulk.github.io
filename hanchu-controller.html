@@ -44,6 +44,20 @@
             </div>
         </div>
 
+        <div id="debugPanel" class="debug-panel">
+            <div class="debug-panel-header" onclick="toggleDebugPanel()">
+                <span class="debug-panel-title">🐛 Debug Log</span>
+                <div class="debug-panel-controls">
+                    <span id="debugLogCount" class="debug-count">0</span>
+                    <button class="btn-debug-clear" onclick="event.stopPropagation(); clearDebugLog()">Clear</button>
+                    <span id="debugChevron" class="debug-chevron">▼</span>
+                </div>
+            </div>
+            <div class="debug-log-body">
+                <div class="debug-log-container" id="debugLogContainer"></div>
+            </div>
+        </div>
+
         <div id="connectedView" style="display: none;">
             <div class="tabs">
                 <button class="tab active" onclick="switchTab('monitor')">📊 Monitor</button>

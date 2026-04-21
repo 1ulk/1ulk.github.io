@@ -146,19 +146,51 @@
         };
 
         function log(message, type = 'info') {
-            const logContainer = document.getElementById('logContainer');
             const timestamp = new Date().toLocaleTimeString();
+
+            // Activity log (inside connected view)
+            const logContainer = document.getElementById('logContainer');
             const entry = document.createElement('div');
             entry.className = `log-entry ${type}`;
             entry.textContent = `[${timestamp}] ${message}`;
             logContainer.insertBefore(entry, logContainer.firstChild);
-            
             while (logContainer.children.length > 100) {
                 logContainer.removeChild(logContainer.lastChild);
             }
+
+            // Debug panel (always visible)
+            const debugContainer = document.getElementById('debugLogContainer');
+            const debugEntry = document.createElement('div');
+            debugEntry.className = `log-entry ${type}`;
+            debugEntry.textContent = `[${timestamp}] ${message}`;
+            debugContainer.insertBefore(debugEntry, debugContainer.firstChild);
+            while (debugContainer.children.length > 200) {
+                debugContainer.removeChild(debugContainer.lastChild);
+            }
+
+            // Update entry count badge; turn red if any errors present
+            const countEl = document.getElementById('debugLogCount');
+            if (countEl) {
+                const n = debugContainer.children.length;
+                countEl.textContent = n;
+                if (type === 'error') countEl.classList.add('has-errors');
+            }
+        }
+
+        function toggleDebugPanel() {
+            document.getElementById('debugPanel').classList.toggle('open');
+        }
+
+        function clearDebugLog() {
+            const c = document.getElementById('debugLogContainer');
+            c.innerHTML = '';
+            const countEl = document.getElementById('debugLogCount');
+            if (countEl) { countEl.textContent = '0'; countEl.classList.remove('has-errors'); }
         }
 
         async function connectDevice() {
+            // Auto-open the debug panel so connection steps are visible immediately
+            document.getElementById('debugPanel').classList.add('open');
             try {
                 log('🔍 Scanning for Hanchu devices...');
                 
