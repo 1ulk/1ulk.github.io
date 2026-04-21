@@ -192,7 +192,7 @@
 
         // Retry getPrimaryService with exponential backoff — GATT service discovery
         // on iOS/macOS can lag behind the connect callback by several hundred ms.
-        async function getPrimaryServiceWithRetry(server, uuid, maxAttempts = 5, baseDelayMs = 300) {
+        async function getPrimaryServiceWithRetry(server, uuid, maxAttempts = 8, baseDelayMs = 700) {
             for (let attempt = 1; attempt <= maxAttempts; attempt++) {
                 try {
                     const svc = await server.getPrimaryService(uuid);
@@ -210,12 +210,38 @@
 
         async function discoverAllServices() {
             document.getElementById('debugPanel').classList.add('open');
-            log('🔍 Scanning to discover device services...');
+
+            // If we already have a live GATT connection, enumerate from it directly —
+            // avoids a second requestDevice/connect which often fails if the device
+            // is already paired to this browser session.
+            if (device && device.gatt.connected) {
+                log('🔍 Using existing connection to enumerate services…', 'info');
+                await enumerateServicesOnServer(device.gatt);
+                return;
+            }
+
+            // If we have a stale device reference, try to reconnect it rather than
+            // scanning again — avoids "connection attempt failed" from double-connect.
+            if (device) {
+                log('🔄 Reconnecting stale device reference…', 'info');
+                try {
+                    const srv = await device.gatt.connect();
+                    await new Promise(r => setTimeout(r, 2000));
+                    await enumerateServicesOnServer(srv);
+                    device.gatt.disconnect();
+                } catch (err) {
+                    log(`❌ Reconnect failed: ${err.message} — try scanning fresh below`, 'error');
+                    log('ℹ️ Tip: turn BLE off/on on your device then try again', 'info');
+                }
+                return;
+            }
+
+            // No existing reference — do a fresh scan
+            log('🔍 No existing device — scanning…', 'info');
             let discoverDevice;
             try {
                 discoverDevice = await navigator.bluetooth.requestDevice({
                     filters: [{ namePrefix: 'HC:' }],
-                    // Declare all UUIDs we want permission to inspect
                     optionalServices: [
                         SERVICE_UUID,
                         SERVICE_UUID_FALLBACK,
@@ -229,29 +255,40 @@
                 });
                 log(`📱 Device: ${discoverDevice.name}`, 'success');
                 const srv = await discoverDevice.gatt.connect();
-                log('🔗 GATT connected — enumerating services…');
-                await new Promise(r => setTimeout(r, 800)); // let discovery settle
-                const services = await srv.getPrimaryServices();
-                if (services.length === 0) {
-                    log('⚠️ No services returned — browser may have blocked unlisted UUIDs', 'error');
-                } else {
-                    log(`📋 Found ${services.length} service(s):`, 'success');
-                    for (const svc of services) {
-                        log(`  SERVICE: ${svc.uuid}`, 'info');
-                        try {
-                            const chars = await svc.getCharacteristics();
-                            for (const c of chars) {
-                                log(`    CHAR: ${c.uuid}  [${c.properties ? Object.keys(c.properties).filter(p => c.properties[p]).join(', ') : '?'}]`, 'info');
-                            }
-                        } catch (e) {
-                            log(`    (chars unavailable: ${e.message})`, 'error');
-                        }
-                    }
-                }
+                await new Promise(r => setTimeout(r, 2000));
+                await enumerateServicesOnServer(srv);
                 discoverDevice.gatt.disconnect();
             } catch (err) {
                 log(`❌ Discovery failed: ${err.message}`, 'error');
+                log('ℹ️ Tip: turn BLE off/on on your device, wait 5s, then retry', 'info');
                 if (discoverDevice?.gatt?.connected) discoverDevice.gatt.disconnect();
+            }
+        }
+
+        async function enumerateServicesOnServer(gattServer) {
+            try {
+                const services = await gattServer.getPrimaryServices();
+                if (services.length === 0) {
+                    log('⚠️ No services visible — only declared optionalServices can be listed', 'error');
+                    return;
+                }
+                log(`📋 Found ${services.length} service(s):`, 'success');
+                for (const svc of services) {
+                    log(`  SERVICE: ${svc.uuid}`, 'info');
+                    try {
+                        const chars = await svc.getCharacteristics();
+                        for (const c of chars) {
+                            const props = c.properties
+                                ? Object.keys(c.properties).filter(p => c.properties[p]).join(', ')
+                                : '?';
+                            log(`    CHAR: ${c.uuid}  [${props}]`, 'info');
+                        }
+                    } catch (e) {
+                        log(`    (chars: ${e.message})`, 'error');
+                    }
+                }
+            } catch (err) {
+                log(`❌ getPrimaryServices failed: ${err.message}`, 'error');
             }
         }
 
@@ -274,8 +311,9 @@
                 const server = await device.gatt.connect();
                 log('🔗 Connected to GATT server', 'success');
 
-                // Small pause so the OS can finish GATT service discovery
-                await new Promise(r => setTimeout(r, 500));
+                // Pause for slow devices — lets the OS finish GATT service discovery
+                log('⏳ Waiting for device service discovery…');
+                await new Promise(r => setTimeout(r, 2000));
 
                 // Mirror the decompiled app: try ff00 first, fall back to ffff
                 let service = null;
