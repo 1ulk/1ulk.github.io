@@ -775,6 +775,16 @@
             font-size: 12px;
             margin-top: 14px;
         }
+        .debug-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            padding: 12px 0 0;
+        }
+        .btn-debug-action {
+            font-size: 13px;
+            padding: 8px 16px;
+        }
         .debug-log-container:empty::before {
             content: 'No log entries yet — tap Scan & Connect to begin.';
             color: #4b5563;
