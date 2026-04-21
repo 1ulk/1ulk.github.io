@@ -1,6 +1,8 @@
         // BLE Service and Characteristic UUIDs
-        const SERVICE_UUID = '0000ff00-0000-1000-8000-00805f9b34fb';
-        const READ_CHAR_UUID = '0000ff01-0000-1000-8000-00805f9b34fb';
+        // Primary service — decompiled app tries ff00 first, then falls back to ffff
+        const SERVICE_UUID          = '0000ff00-0000-1000-8000-00805f9b34fb';
+        const SERVICE_UUID_FALLBACK = '0000ffff-0000-1000-8000-00805f9b34fb';
+        const READ_CHAR_UUID  = '0000ff01-0000-1000-8000-00805f9b34fb';
         const WRITE_CHAR_UUID = '0000ff02-0000-1000-8000-00805f9b34fb';
 
         // AES constants — must match Swift AESHelper exactly
@@ -216,11 +218,12 @@
                     // Declare all UUIDs we want permission to inspect
                     optionalServices: [
                         SERVICE_UUID,
-                        '0000ff00-0000-1000-8000-00805f9b34fb',
+                        SERVICE_UUID_FALLBACK,
                         '0000fff0-0000-1000-8000-00805f9b34fb',
                         '0000ffe0-0000-1000-8000-00805f9b34fb',
                         '0000ffd0-0000-1000-8000-00805f9b34fb',
                         '0000ffc0-0000-1000-8000-00805f9b34fb',
+                        '0000a002-0000-1000-8000-00805f9b34fb',
                         'generic_access', 'generic_attribute', 'device_information'
                     ]
                 });
@@ -263,7 +266,7 @@
                     filters: [
                         { namePrefix: 'HC:' }
                     ],
-                    optionalServices: [SERVICE_UUID]
+                    optionalServices: [SERVICE_UUID, SERVICE_UUID_FALLBACK]
                 });
 
                 log(`📱 Found device: ${device.name}`, 'success');
@@ -274,8 +277,16 @@
                 // Small pause so the OS can finish GATT service discovery
                 await new Promise(r => setTimeout(r, 500));
 
-                const service = await getPrimaryServiceWithRetry(server, SERVICE_UUID);
-                log('✅ Got BLE service', 'success');
+                // Mirror the decompiled app: try ff00 first, fall back to ffff
+                let service = null;
+                try {
+                    service = await getPrimaryServiceWithRetry(server, SERVICE_UUID);
+                    log(`✅ Got BLE service (ff00)`, 'success');
+                } catch (_) {
+                    log(`⚠️ ff00 service not found, trying fallback ffff…`, 'info');
+                    service = await getPrimaryServiceWithRetry(server, SERVICE_UUID_FALLBACK);
+                    log(`✅ Got BLE service (ffff fallback)`, 'success');
+                }
 
                 readCharacteristic = await service.getCharacteristic(READ_CHAR_UUID);
                 writeCharacteristic = await service.getCharacteristic(WRITE_CHAR_UUID);
