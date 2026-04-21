@@ -1,9 +1,9 @@
         // BLE Service and Characteristic UUIDs
-        // Primary service — decompiled app tries ff00 first, then falls back to ffff
-        const SERVICE_UUID          = '0000ff00-0000-1000-8000-00805f9b34fb';
-        const SERVICE_UUID_FALLBACK = '0000ffff-0000-1000-8000-00805f9b34fb';
-        const READ_CHAR_UUID  = '0000ff01-0000-1000-8000-00805f9b34fb';
-        const WRITE_CHAR_UUID = '0000ff02-0000-1000-8000-00805f9b34fb';
+        // Primary: ffff (confirmed on this device). Fallback: ff00 (other units).
+        const SERVICE_UUID          = '0000ffff-0000-1000-8000-00805f9b34fb';
+        const SERVICE_UUID_FALLBACK = '0000ff00-0000-1000-8000-00805f9b34fb';
+        const READ_CHAR_UUID        = '0000ff01-0000-1000-8000-00805f9b34fb';
+        const WRITE_CHAR_UUID       = '0000ff02-0000-1000-8000-00805f9b34fb';
 
         // AES constants — must match Swift AESHelper exactly
         const BASE_KEY = 'gxkj@2099@1914zy';
@@ -192,7 +192,7 @@
 
         // Retry getPrimaryService with exponential backoff — GATT service discovery
         // on iOS/macOS can lag behind the connect callback by several hundred ms.
-        async function getPrimaryServiceWithRetry(server, uuid, maxAttempts = 8, baseDelayMs = 700) {
+        async function getPrimaryServiceWithRetry(server, uuid, maxAttempts = 2, baseDelayMs = 700) {
             for (let attempt = 1; attempt <= maxAttempts; attempt++) {
                 try {
                     const svc = await server.getPrimaryService(uuid);
@@ -242,16 +242,7 @@
             try {
                 discoverDevice = await navigator.bluetooth.requestDevice({
                     filters: [{ namePrefix: 'HC:' }],
-                    optionalServices: [
-                        SERVICE_UUID,
-                        SERVICE_UUID_FALLBACK,
-                        '0000fff0-0000-1000-8000-00805f9b34fb',
-                        '0000ffe0-0000-1000-8000-00805f9b34fb',
-                        '0000ffd0-0000-1000-8000-00805f9b34fb',
-                        '0000ffc0-0000-1000-8000-00805f9b34fb',
-                        '0000a002-0000-1000-8000-00805f9b34fb',
-                        'generic_access', 'generic_attribute', 'device_information'
-                    ]
+                    optionalServices: [SERVICE_UUID, SERVICE_UUID_FALLBACK]
                 });
                 log(`📱 Device: ${discoverDevice.name}`, 'success');
                 const srv = await discoverDevice.gatt.connect();
@@ -315,15 +306,14 @@
                 log('⏳ Waiting for device service discovery…');
                 await new Promise(r => setTimeout(r, 2000));
 
-                // Mirror the decompiled app: try ff00 first, fall back to ffff
-                let service = null;
+                let service;
                 try {
                     service = await getPrimaryServiceWithRetry(server, SERVICE_UUID);
-                    log(`✅ Got BLE service (ff00)`, 'success');
+                    log(`✅ Got BLE service (${SERVICE_UUID.slice(4, 8)})`, 'success');
                 } catch (_) {
-                    log(`⚠️ ff00 service not found, trying fallback ffff…`, 'info');
+                    log(`⚠️ ${SERVICE_UUID.slice(4, 8)} not found, trying ${SERVICE_UUID_FALLBACK.slice(4, 8)}…`, 'info');
                     service = await getPrimaryServiceWithRetry(server, SERVICE_UUID_FALLBACK);
-                    log(`✅ Got BLE service (ffff fallback)`, 'success');
+                    log(`✅ Got BLE service (${SERVICE_UUID_FALLBACK.slice(4, 8)} fallback)`, 'success');
                 }
 
                 readCharacteristic = await service.getCharacteristic(READ_CHAR_UUID);
