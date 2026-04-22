@@ -404,9 +404,7 @@
             setTimeout(async () => {
                 await refreshStaticData();       // device info + work mode once
                 await refreshAllData();          // first live snapshot
-                autoRefreshInterval = setInterval(refreshAllData, 1000);
-                document.getElementById('autoRefreshCheckbox').checked = true;
-                log('⏰ Live refresh started (1s)', 'success');
+                log('✅ Initial data loaded — auto-refresh is off. Enable it to poll every 5s.');
                 // Daily totals read after a short delay so device isn't flooded
                 setTimeout(refreshExtendedData, 2000);
             }, 1000);
@@ -728,8 +726,8 @@
             const enabled = document.getElementById('autoRefreshCheckbox').checked;
 
             if (enabled) {
-                log('⏰ Auto-refresh enabled (1s interval)', 'success');
-                autoRefreshInterval = setInterval(refreshAllData, 1000);
+                log('⏰ Auto-refresh enabled (5s interval)', 'success');
+                autoRefreshInterval = setInterval(refreshAllData, 5000);
             } else {
                 log('⏸️ Auto-refresh disabled');
                 if (autoRefreshInterval) {
