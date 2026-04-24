@@ -1093,7 +1093,11 @@
             };
 
             // Power Overview Chart — Battery, PV and Grid on one graph
-            powerOverviewChart = new Chart(document.getElementById('powerOverviewChart'), {
+            const powerOverviewCanvas = document.getElementById('powerOverviewChart');
+            if (!powerOverviewCanvas) {
+                log('⚠️ powerOverviewChart canvas not found — Power Overview chart disabled', 'error');
+            }
+            powerOverviewChart = powerOverviewCanvas ? new Chart(powerOverviewCanvas, {
                 ...chartConfig,
                 data: {
                     labels: [],
@@ -1120,7 +1124,7 @@
                         fill: false
                     }]
                 }
-            });
+            }) : null;
 
             // Battery Chart
             batteryChart = new Chart(document.getElementById('batteryChart'), {
@@ -1157,7 +1161,7 @@
         }
 
         function updateCharts() {
-            if (!batteryChart || typeof Chart === 'undefined') return;
+            if (!batteryChart || !powerOverviewChart || typeof Chart === 'undefined') return;
 
             const labels = historicalData.timestamps.map(t => t.toLocaleTimeString());
 
