@@ -692,7 +692,10 @@
         }
 
         async function refreshAllData() {
-            if (!device || !device.gatt.connected) return;
+            if (!device || !device.gatt.connected) {
+                log('⚠️ refreshAllData skipped — device not connected', 'error');
+                return;
+            }
             await sendCommand({
                 cmd: 'local', act: '1',
                 tid: '10001',
@@ -726,8 +729,13 @@
             const enabled = document.getElementById('autoRefreshCheckbox').checked;
 
             if (enabled) {
+                if (!device || !device.gatt.connected) {
+                    log('⚠️ Cannot start auto-refresh — device not connected', 'error');
+                    return;
+                }
                 log('⏰ Auto-refresh enabled (5s interval)', 'success');
                 autoRefreshInterval = setInterval(refreshAllData, 5000);
+                refreshAllData(); // immediate first tick so it doesn't feel broken
             } else {
                 log('⏸️ Auto-refresh disabled');
                 if (autoRefreshInterval) {
