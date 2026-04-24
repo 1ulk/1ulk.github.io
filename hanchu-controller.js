@@ -36,8 +36,6 @@
         // Charts
         let powerOverviewChart = null;
         let batteryChart = null;
-        let solarChart = null;
-        let gridChart = null;
         let temperatureChart = null;
 
         // AES Encryption Helper — matches Swift AESHelper exactly (AES-128-CFB8)
@@ -1143,34 +1141,6 @@
                 }
             });
 
-            // Solar Chart
-            solarChart = new Chart(document.getElementById('solarChart'), {
-                ...chartConfig,
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'PV Power (W)',
-                        data: [],
-                        borderColor: '#f59e0b',
-                        backgroundColor: '#f59e0b20'
-                    }]
-                }
-            });
-
-            // Grid Chart
-            gridChart = new Chart(document.getElementById('gridChart'), {
-                ...chartConfig,
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Grid Power (W)',
-                        data: [],
-                        borderColor: '#8b5cf6',
-                        backgroundColor: '#8b5cf620'
-                    }]
-                }
-            });
-
             // Temperature Chart
             temperatureChart = new Chart(document.getElementById('temperatureChart'), {
                 ...chartConfig,
@@ -1203,16 +1173,6 @@
             batteryChart.data.datasets[0].data = historicalData.soc;
             batteryChart.data.datasets[1].data = historicalData.voltage;
             batteryChart.update('none');
-
-            // Solar Chart
-            solarChart.data.labels = labels;
-            solarChart.data.datasets[0].data = historicalData.pvPower;
-            solarChart.update('none');
-
-            // Grid Chart
-            gridChart.data.labels = labels;
-            gridChart.data.datasets[0].data = historicalData.gridPower;
-            gridChart.update('none');
 
             // Temperature Chart
             temperatureChart.data.labels = labels;
