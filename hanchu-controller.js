@@ -921,7 +921,7 @@
 
             items.forEach(({ k, v }) => {
                 if (k === P.WORK_MODE) {
-                    const idx      = parseInt(v);
+                    const idx      = parseInt(v) - 1;
                     const modeKey  = modeMap[idx];
                     const names    = ['Self-Consumption', 'Backup', 'User Defined', 'Off-Grid'];
                     const badges   = ['badge-green', 'badge-blue', 'badge-purple', 'badge-orange'];
@@ -1184,39 +1184,6 @@
             temperatureChart.update('none');
         }
 
-        function exportToCSV() {
-            const headers = ['Timestamp', 'SOC(%)', 'Voltage(V)', 'Current(A)', 'Power(W)', 'Temperature(°C)', 'PV_Power(W)', 'Grid_Power(W)'];
-            const rows = historicalData.timestamps.map((time, i) => [
-                time.toISOString(),
-                historicalData.soc[i] || '',
-                historicalData.voltage[i] || '',
-                historicalData.current[i] || '',
-                historicalData.power[i] || '',
-                historicalData.temperature[i] || '',
-                historicalData.pvPower[i] || '',
-                historicalData.gridPower[i] || ''
-            ]);
-
-            const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
-            downloadFile(csv, 'hanchu-data.csv', 'text/csv');
-            log('📥 Exported to CSV', 'success');
-        }
-
-        function exportToJSON() {
-            const json = JSON.stringify(historicalData, null, 2);
-            downloadFile(json, 'hanchu-data.json', 'application/json');
-            log('📥 Exported to JSON', 'success');
-        }
-
-        function downloadFile(content, filename, mimeType) {
-            const blob = new Blob([content], { type: mimeType });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            a.click();
-            URL.revokeObjectURL(url);
-        }
 
         function clearHistory() {
             if (!confirm('Clear all historical data?')) return;

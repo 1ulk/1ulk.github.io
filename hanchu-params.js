@@ -209,8 +209,8 @@ const P = {
     // ── Battery module (BMS) ─────────────────────────────────────────────────
     BATTERY_SERIAL:             'B002',
     BMS_SOC:                    'B034',  // integer %, e.g. 67 — see also BATTERY_SOC (P071, decimal)
-    BATTERY_TERMINAL_VOLTAGE:   'B035',
-    BATTERY_CURRENT:            'B043',
+    BATTERY_TERMINAL_VOLTAGE:   'P067',
+    BATTERY_CURRENT:            'P068',
 
     // ── Charge time periods ──────────────────────────────────────────────────
     CHARGE_P1_START:            'L005',
