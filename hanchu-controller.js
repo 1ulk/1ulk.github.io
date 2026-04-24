@@ -34,6 +34,7 @@
         };
         
         // Charts
+        let powerOverviewChart = null;
         let batteryChart = null;
         let solarChart = null;
         let gridChart = null;
@@ -1093,6 +1094,36 @@
                 }
             };
 
+            // Power Overview Chart — Battery, PV and Grid on one graph
+            powerOverviewChart = new Chart(document.getElementById('powerOverviewChart'), {
+                ...chartConfig,
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Battery Power (W)',
+                        data: [],
+                        borderColor: '#10b981',
+                        backgroundColor: '#10b98115',
+                        tension: 0.3,
+                        fill: false
+                    }, {
+                        label: 'PV Power (W)',
+                        data: [],
+                        borderColor: '#f59e0b',
+                        backgroundColor: '#f59e0b15',
+                        tension: 0.3,
+                        fill: false
+                    }, {
+                        label: 'Grid Power (W)',
+                        data: [],
+                        borderColor: '#8b5cf6',
+                        backgroundColor: '#8b5cf615',
+                        tension: 0.3,
+                        fill: false
+                    }]
+                }
+            });
+
             // Battery Chart
             batteryChart = new Chart(document.getElementById('batteryChart'), {
                 ...chartConfig,
@@ -1159,6 +1190,13 @@
             if (!batteryChart || typeof Chart === 'undefined') return;
 
             const labels = historicalData.timestamps.map(t => t.toLocaleTimeString());
+
+            // Power Overview
+            powerOverviewChart.data.labels = labels;
+            powerOverviewChart.data.datasets[0].data = historicalData.power;
+            powerOverviewChart.data.datasets[1].data = historicalData.pvPower;
+            powerOverviewChart.data.datasets[2].data = historicalData.gridPower;
+            powerOverviewChart.update('none');
 
             // Battery Chart
             batteryChart.data.labels = labels;
