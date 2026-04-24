@@ -16,6 +16,7 @@
         let dynamicKey = null;
         let randomFix = null;
         let autoRefreshInterval = null;
+        let userInitiatedDisconnect = false;
 
         // Pending write confirmations: key → { resolve, reject, timeoutId }
         const pendingWrites = new Map();
@@ -286,6 +287,7 @@
         async function connectDevice() {
             // Auto-open the debug panel so connection steps are visible immediately
             document.getElementById('debugPanel').classList.add('open');
+            userInitiatedDisconnect = false;
             try {
                 log('🔍 Scanning for Hanchu devices...');
                 log(`ℹ️ Expecting service UUID: ${SERVICE_UUID}`);
@@ -321,8 +323,12 @@
                 log(`✅ Got characteristics (R:${READ_CHAR_UUID.slice(-4)} W:${WRITE_CHAR_UUID.slice(-4)})`, 'success');
 
                 await readCharacteristic.startNotifications();
+                readCharacteristic.removeEventListener('characteristicvaluechanged', handleNotification);
                 readCharacteristic.addEventListener('characteristicvaluechanged', handleNotification);
                 log('🔔 Subscribed to notifications', 'success');
+
+                device.removeEventListener('gattserverdisconnected', handleUnexpectedDisconnect);
+                device.addEventListener('gattserverdisconnected', handleUnexpectedDisconnect);
 
                 // Update UI
                 document.getElementById('statusIndicator').classList.add('connected');
@@ -347,7 +353,61 @@
             }
         }
 
+        async function handleUnexpectedDisconnect() {
+            if (userInitiatedDisconnect) return;
+
+            log('⚠️ Device disconnected unexpectedly — attempting reconnect…', 'error');
+            document.getElementById('statusIndicator').classList.remove('connected');
+            document.getElementById('statusText').textContent = 'Reconnecting…';
+
+            const maxAttempts = 5;
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                await new Promise(r => setTimeout(r, 2000 * attempt));
+                try {
+                    log(`🔄 Reconnect attempt ${attempt}/${maxAttempts}…`);
+                    const server = await device.gatt.connect();
+                    log('🔗 Reconnected to GATT server', 'success');
+
+                    await new Promise(r => setTimeout(r, 2000));
+
+                    let service;
+                    try {
+                        service = await getPrimaryServiceWithRetry(server, SERVICE_UUID);
+                    } catch (_) {
+                        service = await getPrimaryServiceWithRetry(server, SERVICE_UUID_FALLBACK);
+                    }
+
+                    readCharacteristic  = await service.getCharacteristic(READ_CHAR_UUID);
+                    writeCharacteristic = await service.getCharacteristic(WRITE_CHAR_UUID);
+                    log('✅ Characteristics restored', 'success');
+
+                    await readCharacteristic.startNotifications();
+                    readCharacteristic.removeEventListener('characteristicvaluechanged', handleNotification);
+                    readCharacteristic.addEventListener('characteristicvaluechanged', handleNotification);
+                    log('🔔 Notifications re-subscribed', 'success');
+
+                    device.removeEventListener('gattserverdisconnected', handleUnexpectedDisconnect);
+                    device.addEventListener('gattserverdisconnected', handleUnexpectedDisconnect);
+
+                    document.getElementById('statusIndicator').classList.add('connected');
+                    document.getElementById('statusText').textContent = `Connected to ${device.name}`;
+
+                    // Re-run key exchange so encrypted comms work again
+                    await initializeConnection();
+                    log('✅ Reconnected successfully', 'success');
+                    return;
+                } catch (err) {
+                    log(`❌ Reconnect attempt ${attempt} failed: ${err.message}`, 'error');
+                }
+            }
+
+            log('❌ Could not reconnect after multiple attempts — please reconnect manually', 'error');
+            disconnectDevice();
+        }
+
         function disconnectDevice() {
+            userInitiatedDisconnect = true;
+
             if (autoRefreshInterval) {
                 clearInterval(autoRefreshInterval);
                 autoRefreshInterval = null;
