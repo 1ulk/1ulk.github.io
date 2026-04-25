@@ -541,6 +541,7 @@
                         [P.BATTERY_TERMINAL_VOLTAGE]: { elem: 'voltage', hist: 'voltage' },
                         [P.BATTERY_CURRENT]: { elem: 'current', hist: 'current' },
                         [P.BATTERY_POWER]: { elem: 'power', hist: 'power' },
+                        [P.LOAD]: { elem: 'currentLoad', hist: 'currentLoad' },
                         [P.BATTERY_TEMPERATURE]: { elem: 'temperature', hist: 'temperature' },
                         [P.PV1_VOLTAGE]: { elem: 'pv1Voltage' },
                         [P.PV1_CURRENT]: { elem: 'pv1Current' },
@@ -759,7 +760,7 @@
                 cmd: 'local', act: '1',
                 tid: '10001',
                 data: [P.BATTERY_SOC,P.BATTERY_TERMINAL_VOLTAGE,P.BATTERY_CURRENT,P.BATTERY_POWER,P.BATTERY_TEMPERATURE,
-                       P.PV1_VOLTAGE,P.PV1_CURRENT,P.PV2_VOLTAGE,P.PV2_CURRENT,P.PV_POWER_TOTAL,
+                       P.PV1_VOLTAGE,P.PV1_CURRENT,P.PV2_VOLTAGE,P.PV2_CURRENT,P.PV_POWER_TOTAL, P.LOAD,
                        P.GRID_VOLTAGE,P.GRID_CURRENT,P.GRID_FREQUENCY,P.GRID_ACTIVE_POWER].map(k => ({ k }))
             }, false);
         }

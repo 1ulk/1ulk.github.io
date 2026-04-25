@@ -251,6 +251,7 @@ const P = {
     GRID_CURRENT:               'P045',
     GRID_FREQUENCY:             'P053',
     GRID_ACTIVE_POWER:          'P055',
+    GRID_REACTIVE_POWER:        'P056',
     POWER_ON:                   'P500',
     GRID_PURCHASED_TODAY:       'P638',
     GRID_SOLD_TODAY:            'P639',
@@ -273,6 +274,8 @@ const P = {
     WORK_MODE:                  'P651',  // 1=Self-Consumption 2=Backup 3=User-Defined 4=Off-Grid
     MIN_SOC_CUTOFF:             'P772',
 
+
+    LOAD: 'P644',
     // ── Also referenced in code ──────────────────────────────────────────────
     BMS_FIRMWARE:               'L023',  // alias kept for backward compat — same as DTU_FIRMWARE
 };
