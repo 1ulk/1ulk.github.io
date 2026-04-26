@@ -1203,7 +1203,7 @@
             const rev = revId ? document.getElementById(revId) : null;
             if (!fwd) return;
 
-            if (!active || watts < 5) {
+            if (!active) {
                 fwd.style.display = 'none';
                 if (rev) rev.style.display = 'none';
                 return;
@@ -1212,10 +1212,12 @@
             // Speed: 2s @ 500W → 0.35s @ 5000W
             const dur = (Math.max(0.35, 2.0 / Math.max(0.1, watts / 500))).toFixed(2) + 's';
 
-            if (reverse && rev) {
+            if (reverse) {
                 fwd.style.display = 'none';
-                rev.style.display = '';
-                rev.querySelectorAll('.ef-dot').forEach(c => c.style.animationDuration = dur);
+                if (rev) {
+                    rev.style.display = '';
+                    rev.querySelectorAll('.ef-dot').forEach(c => c.style.animationDuration = dur);
+                }
             } else {
                 if (rev) rev.style.display = 'none';
                 fwd.style.display = '';
@@ -1227,7 +1229,7 @@
             const el = document.getElementById(id);
             if (!el) return;
             el.classList.toggle('ef-active', active);
-            if (color) el.setAttribute('fill', color);
+            if (active && color) el.setAttribute('fill', color);
         }
 
         function efSetTrack(id, active, stroke, glowColor) {
