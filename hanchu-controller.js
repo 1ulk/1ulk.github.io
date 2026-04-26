@@ -30,7 +30,8 @@
             power: [],
             temperature: [],
             pvPower: [],
-            gridPower: []
+            gridPower: [],
+            currentLoad: []
         };
         
         // Charts
@@ -611,8 +612,9 @@
                     });
                 }
 
-                // Update charts
+                // Update charts and energy flow diagram
                 updateCharts();
+                updateEnergyFlow();
                 document.getElementById('dataPointCount').textContent = historicalData.timestamps.length;
             }
         }
@@ -1067,6 +1069,9 @@
             if (tabName === 'config' && device?.gatt?.connected) {
                 readConfigParams();
             }
+            if (tabName === 'energy') {
+                updateEnergyFlow();
+            }
         }
 
         // Chart functions
@@ -1185,6 +1190,120 @@
             temperatureChart.update('none');
         }
 
+
+        // ─── Energy Flow Diagram ──────────────────────────────────────────────
+
+        function efSetText(id, val) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = val;
+        }
+
+        function efActivateFlow(fwdId, revId, active, watts, reverse) {
+            const fwd = document.getElementById(fwdId);
+            const rev = revId ? document.getElementById(revId) : null;
+            if (!fwd) return;
+
+            if (!active || watts < 5) {
+                fwd.style.display = 'none';
+                if (rev) rev.style.display = 'none';
+                return;
+            }
+
+            // Speed: 2s @ 500W → 0.35s @ 5000W
+            const dur = (Math.max(0.35, 2.0 / Math.max(0.1, watts / 500))).toFixed(2) + 's';
+
+            if (reverse && rev) {
+                fwd.style.display = 'none';
+                rev.style.display = '';
+                rev.querySelectorAll('.ef-dot').forEach(c => c.style.animationDuration = dur);
+            } else {
+                if (rev) rev.style.display = 'none';
+                fwd.style.display = '';
+                fwd.querySelectorAll('.ef-dot').forEach(c => c.style.animationDuration = dur);
+            }
+        }
+
+        function efSetGlow(id, active, color) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.classList.toggle('ef-active', active);
+            if (color) el.setAttribute('fill', color);
+        }
+
+        function efSetTrack(id, active, stroke, glowColor) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.style.display = active ? '' : 'none';
+            if (active) {
+                el.style.stroke = stroke;
+                el.style.filter = `drop-shadow(0 0 5px ${glowColor})`;
+            }
+        }
+
+        function updateEnergyFlow() {
+            const pvW   = parseFloat(document.getElementById('pvPower')?.textContent)    || 0;
+            const gridW = parseFloat(document.getElementById('activePower')?.textContent) || 0;
+            const battW = parseFloat(document.getElementById('power')?.textContent)       || 0;
+            const loadRaw = parseFloat(document.getElementById('currentLoad')?.textContent) || 0;
+
+            // P071 (BATTERY_SOC) is documented as decimal 0.0–1.0.
+            // Guard: if value ≤ 1 treat as decimal and convert to %; otherwise already %.
+            const socRaw = parseFloat(document.getElementById('soc')?.textContent) || 0;
+            const socPct = socRaw > 1 ? socRaw : socRaw * 100;
+
+            // P644 (LOAD) is a reserved parameter — unit unconfirmed.
+            // The Monitor tab labels it kW, so we display as-is in kW; convert to W for flow thresholds.
+            // If the device sends watts directly, the W values here are 1000× too large — adjust P.LOAD unit if needed.
+            const loadKw = loadRaw;
+            const loadW  = loadKw * 1000;
+
+            // ── Node values ──────────────────────────────────────────────────
+            efSetText('ef-solar-power', pvW > 0 ? pvW.toFixed(0) + ' W' : '--');
+
+            efSetText('ef-grid-power',
+                Math.abs(gridW) > 5 ? (gridW > 0 ? '+' : '') + gridW.toFixed(0) + ' W' : '0 W');
+
+            // Battery power: colour reflects direction
+            const battEl = document.getElementById('ef-batt-power');
+            if (battEl) {
+                battEl.textContent = Math.abs(battW) > 5 ? Math.abs(battW).toFixed(0) + ' W' : '--';
+                battEl.setAttribute('fill', battW > 50 ? '#34d399' : battW < -50 ? '#fb923c' : '#6b7280');
+            }
+
+            efSetText('ef-batt-sub',
+                socPct > 0 ? Math.round(socPct) + '% · Battery' : '-- · Battery');
+
+            efSetText('ef-house-load', loadW > 0 ? loadW.toFixed(0) + ' W' : '--');
+
+            // ── Battery SOC fill bar (max width = 30px) ───────────────────────
+            const fillEl = document.getElementById('ef-batt-fill');
+            if (fillEl) {
+                const w = Math.round(Math.max(0, Math.min(30, (socPct / 100) * 30)));
+                fillEl.setAttribute('width', w);
+                fillEl.setAttribute('fill',
+                    socPct > 50 ? '#34d399' : socPct > 20 ? '#fbbf24' : '#f87171');
+            }
+
+            // ── Active track glows ────────────────────────────────────────────
+            efSetTrack('tg-solar', pvW > 10,          '#f59e0b', '#f59e0b');
+            efSetTrack('tg-batt',  Math.abs(battW) > 50,
+                battW > 0 ? '#10b981' : '#f97316',
+                battW > 0 ? '#10b981' : '#f97316');
+            efSetTrack('tg-grid',  Math.abs(gridW) > 10, '#8b5cf6', '#8b5cf6');
+            efSetTrack('tg-home',  loadW > 50,           '#3b82f6', '#3b82f6');
+
+            // ── Node glows ────────────────────────────────────────────────────
+            efSetGlow('glow-solar', pvW > 10,          '#f59e0b');
+            efSetGlow('glow-batt',  Math.abs(battW) > 50, battW > 0 ? '#10b981' : '#f97316');
+            efSetGlow('glow-grid',  Math.abs(gridW) > 10, '#8b5cf6');
+            efSetGlow('glow-home',  loadW > 50,           '#3b82f6');
+
+            // ── Flow dot animations ───────────────────────────────────────────
+            efActivateFlow('flow-solar-fwd', null,          pvW > 10,          pvW,              false);
+            efActivateFlow('flow-batt-fwd',  'flow-batt-rev', Math.abs(battW) > 50, Math.abs(battW), battW > 0); // fwd=discharge, rev=charge
+            efActivateFlow('flow-grid-fwd',  'flow-grid-rev', Math.abs(gridW) > 10, Math.abs(gridW), gridW < 0); // fwd=import, rev=export
+            efActivateFlow('flow-home-fwd',  null,          loadW > 50,        loadW,            false);
+        }
 
         function clearHistory() {
             if (!confirm('Clear all historical data?')) return;

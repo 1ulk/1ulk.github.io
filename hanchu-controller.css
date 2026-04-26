@@ -878,3 +878,100 @@
             /* Grid gap */
             .grid { gap: 12px; margin-bottom: 12px; }
         }
+
+        /* =====================================================
+           ENERGY FLOW DIAGRAM
+           ===================================================== */
+
+        .ef-card { padding: 0 !important; overflow: hidden; }
+
+        .energy-flow-container { line-height: 0; }
+
+        #energyFlowSvg {
+            width: 100%;
+            height: auto;
+            display: block;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        /* Static track lines */
+        .ef-track {
+            stroke: rgba(255,255,255,0.07);
+            stroke-width: 2;
+            stroke-linecap: round;
+        }
+
+        /* Active glowing track lines */
+        .ef-tg {
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            opacity: 0.7;
+        }
+
+        /* Moving dots — all start at cx=0, cy=0; CSS translate moves them */
+        .ef-dot {
+            animation-iteration-count: infinite;
+            animation-timing-function: linear;
+            animation-fill-mode: both;
+            animation-duration: 1.2s;
+        }
+
+        @keyframes dot-solar-fwd { 0%{transform:translate(300px,119px)} 100%{transform:translate(300px,207px)} }
+        @keyframes dot-batt-fwd  { 0%{transform:translate(124px,281px)} 100%{transform:translate(242px,270px)} }
+        @keyframes dot-batt-rev  { 0%{transform:translate(242px,270px)} 100%{transform:translate(124px,281px)} }
+        @keyframes dot-grid-fwd  { 0%{transform:translate(476px,281px)} 100%{transform:translate(358px,270px)} }
+        @keyframes dot-grid-rev  { 0%{transform:translate(358px,270px)} 100%{transform:translate(476px,281px)} }
+        @keyframes dot-home-fwd  { 0%{transform:translate(300px,323px)} 100%{transform:translate(300px,396px)} }
+
+        .ef-dot-solar  { animation-name: dot-solar-fwd; fill: #fbbf24; filter: drop-shadow(0 0 3px #f59e0b); }
+        .ef-dot-batt-d { animation-name: dot-batt-fwd;  fill: #fb923c; filter: drop-shadow(0 0 3px #f97316); }
+        .ef-dot-batt-c { animation-name: dot-batt-rev;  fill: #34d399; filter: drop-shadow(0 0 3px #10b981); }
+        .ef-dot-grid   { animation-name: dot-grid-fwd;  fill: #a78bfa; filter: drop-shadow(0 0 3px #8b5cf6); }
+        .ef-dot-grid-e { animation-name: dot-grid-rev;  fill: #a78bfa; filter: drop-shadow(0 0 3px #8b5cf6); }
+        .ef-dot-home   { animation-name: dot-home-fwd;  fill: #60a5fa; filter: drop-shadow(0 0 3px #3b82f6); }
+
+        /* Hub breathing ring */
+        .hub-ring {
+            fill: none;
+            stroke: #6366f1;
+            stroke-width: 1.5;
+            transform-box: fill-box;
+            transform-origin: center;
+            animation: hub-breathe 2.8s ease-in-out infinite;
+        }
+        @keyframes hub-breathe {
+            0%, 100% { transform: scale(1);    opacity: 0.18; }
+            50%       { transform: scale(1.07); opacity: 0.4;  }
+        }
+
+        /* Node value text (below circle) */
+        .ef-nv {
+            text-anchor: middle;
+            font-size: 16px;
+            font-weight: 800;
+            dominant-baseline: middle;
+        }
+        /* Node label text */
+        .ef-nl {
+            text-anchor: middle;
+            font-size: 11px;
+            font-weight: 500;
+            fill: rgba(255,255,255,0.32);
+            letter-spacing: 0.3px;
+        }
+
+        /* Node glow (behind circle, pulsed when active) */
+        .ef-glow {
+            transition: opacity 0.6s ease;
+            filter: blur(12px);
+        }
+        .ef-glow.ef-active {
+            animation: ef-glow-pulse 2.2s ease-in-out infinite;
+        }
+        @keyframes ef-glow-pulse {
+            0%, 100% { opacity: 0.12; }
+            50%       { opacity: 0.28; }
+        }
+
+        /* Battery fill bar */
+        #ef-batt-fill { transition: width 0.9s ease; }
