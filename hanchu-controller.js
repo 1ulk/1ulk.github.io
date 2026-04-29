@@ -1243,41 +1243,49 @@
         }
 
         function updateEnergyFlow() {
-            const pvW   = parseFloat(document.getElementById('pvPower')?.textContent)    || 0;
-            const gridW = parseFloat(document.getElementById('activePower')?.textContent) || 0;
-            const battW = parseFloat(document.getElementById('power')?.textContent)       || 0;
-            const loadRaw = parseFloat(document.getElementById('currentLoad')?.textContent) || 0;
+            const pvW  = parseFloat(document.getElementById('pvPower')?.textContent)    || 0;
+            const battW = parseFloat(document.getElementById('power')?.textContent)      || 0;
 
-            // P071 (BATTERY_SOC) is documented as decimal 0.0–1.0.
-            // Guard: if value ≤ 1 treat as decimal and convert to %; otherwise already %.
+            // P055 (activePower) = house load (total consumption). Always >= 0. Unit: W.
+            const homeW = parseFloat(document.getElementById('activePower')?.textContent) || 0;
+
+            // P644 (currentLoad) = grid import/export. Positive = importing, negative = exporting.
+            // Unit unconfirmed — assumed kW based on Monitor tab label; convert to W.
+            const gridRaw = parseFloat(document.getElementById('currentLoad')?.textContent) || 0;
+            const gridW   = gridRaw * 1000;
+
+            // P071 (BATTERY_SOC): decimal 0.0–1.0 or integer 0–100.
+            // Guard: ≤1 → decimal, multiply by 100.
             const socRaw = parseFloat(document.getElementById('soc')?.textContent) || 0;
             const socPct = socRaw > 1 ? socRaw : socRaw * 100;
 
-            // P644 (LOAD) is a reserved parameter — unit unconfirmed.
-            // The Monitor tab labels it kW, so we display as-is in kW; convert to W for flow thresholds.
-            // If the device sends watts directly, the W values here are 1000× too large — adjust P.LOAD unit if needed.
-            const loadKw = loadRaw;
-            const loadW  = loadKw * 1000;
+            // Battery sign convention (confirmed by user):
+            //   negative battW → charging  (energy flows hub → battery)
+            //   positive battW → discharging (energy flows battery → hub)
+            const battCharging    = battW < -50;
+            const battDischarging = battW >  50;
+            const battColor = battCharging ? '#34d399' : battDischarging ? '#fb923c' : '#6b7280';
 
             // ── Node values ──────────────────────────────────────────────────
             efSetText('ef-solar-power', pvW > 0 ? pvW.toFixed(0) + ' W' : '--');
 
-            efSetText('ef-grid-power',
-                Math.abs(gridW) > 5 ? (gridW > 0 ? '+' : '') + gridW.toFixed(0) + ' W' : '0 W');
-
-            // Battery power: colour reflects direction
             const battEl = document.getElementById('ef-batt-power');
             if (battEl) {
-                battEl.textContent = Math.abs(battW) > 5 ? Math.abs(battW).toFixed(0) + ' W' : '--';
-                battEl.setAttribute('fill', battW > 50 ? '#34d399' : battW < -50 ? '#fb923c' : '#6b7280');
+                battEl.textContent = Math.abs(battW) > 50 ? Math.abs(battW).toFixed(0) + ' W' : '--';
+                battEl.setAttribute('fill', battColor);
             }
 
             efSetText('ef-batt-sub',
                 socPct > 0 ? Math.round(socPct) + '% · Battery' : '-- · Battery');
 
-            efSetText('ef-house-load', loadW > 0 ? loadW.toFixed(0) + ' W' : '--');
+            efSetText('ef-house-load', homeW > 0 ? homeW.toFixed(0) + ' W' : '--');
 
-            // ── Battery SOC fill bar (max width = 30px) ───────────────────────
+            efSetText('ef-grid-power',
+                Math.abs(gridW) > 5
+                    ? (gridW > 0 ? '+' : '') + gridW.toFixed(0) + ' W'
+                    : '0 W');
+
+            // ── Battery SOC fill bar (max width = 30px) ──────────────────────
             const fillEl = document.getElementById('ef-batt-fill');
             if (fillEl) {
                 const w = Math.round(Math.max(0, Math.min(30, (socPct / 100) * 30)));
@@ -1287,24 +1295,31 @@
             }
 
             // ── Active track glows ────────────────────────────────────────────
-            efSetTrack('tg-solar', pvW > 10,          '#f59e0b', '#f59e0b');
-            efSetTrack('tg-batt',  Math.abs(battW) > 50,
-                battW > 0 ? '#10b981' : '#f97316',
-                battW > 0 ? '#10b981' : '#f97316');
-            efSetTrack('tg-grid',  Math.abs(gridW) > 10, '#8b5cf6', '#8b5cf6');
-            efSetTrack('tg-home',  loadW > 50,           '#3b82f6', '#3b82f6');
+            const battActive = battCharging || battDischarging;
+            efSetTrack('tg-solar', pvW   > 10,            '#f59e0b', '#f59e0b');
+            efSetTrack('tg-batt',  battActive,             battCharging ? '#10b981' : '#f97316',
+                                                           battCharging ? '#10b981' : '#f97316');
+            efSetTrack('tg-grid',  Math.abs(gridW) > 10,  '#8b5cf6', '#8b5cf6');
+            efSetTrack('tg-home',  homeW > 50,             '#3b82f6', '#3b82f6');
 
             // ── Node glows ────────────────────────────────────────────────────
-            efSetGlow('glow-solar', pvW > 10,          '#f59e0b');
-            efSetGlow('glow-batt',  Math.abs(battW) > 50, battW > 0 ? '#10b981' : '#f97316');
+            efSetGlow('glow-solar', pvW  > 10,            '#f59e0b');
+            efSetGlow('glow-batt',  battActive,            battCharging ? '#10b981' : '#f97316');
             efSetGlow('glow-grid',  Math.abs(gridW) > 10, '#8b5cf6');
-            efSetGlow('glow-home',  loadW > 50,           '#3b82f6');
+            efSetGlow('glow-home',  homeW > 50,            '#3b82f6');
 
             // ── Flow dot animations ───────────────────────────────────────────
-            efActivateFlow('flow-solar-fwd', null,          pvW > 10,          pvW,              false);
-            efActivateFlow('flow-batt-fwd',  'flow-batt-rev', Math.abs(battW) > 50, Math.abs(battW), battW > 0); // fwd=discharge, rev=charge
-            efActivateFlow('flow-grid-fwd',  'flow-grid-rev', Math.abs(gridW) > 10, Math.abs(gridW), gridW < 0); // fwd=import, rev=export
-            efActivateFlow('flow-home-fwd',  null,          loadW > 50,        loadW,            false);
+            // Solar: always hub-bound
+            efActivateFlow('flow-solar-fwd', null,           pvW > 10,           pvW,              false);
+
+            // Battery: negative = charging (rev: hub→battery), positive = discharging (fwd: battery→hub)
+            efActivateFlow('flow-batt-fwd', 'flow-batt-rev', battActive, Math.abs(battW), battCharging);
+
+            // Grid: positive = importing (fwd: grid→hub), negative = exporting (rev: hub→grid)
+            efActivateFlow('flow-grid-fwd', 'flow-grid-rev', Math.abs(gridW) > 10, Math.abs(gridW), gridW < 0);
+
+            // Home: always hub-bound
+            efActivateFlow('flow-home-fwd', null,            homeW > 50,         homeW,            false);
         }
 
         function clearHistory() {
