@@ -5,7 +5,7 @@
         const READ_CHAR_UUID        = '0000ff01-0000-1000-8000-00805f9b34fb';
         const WRITE_CHAR_UUID       = '0000ff02-0000-1000-8000-00805f9b34fb';
 
-        // AES constants — must match Swift AESHelper exactly
+        // AES constants
         const BASE_KEY = 'gxkj@2099@1914zy';
         const BASE_IV  = '9z64Qr8mZH7Pg8d1';
 
@@ -39,7 +39,7 @@
         let batteryChart = null;
         let temperatureChart = null;
 
-        // AES Encryption Helper — matches Swift AESHelper exactly (AES-128-CFB8)
+        // AES Encryption Helper
         const AESHelper = {
             // Convert Uint8Array → CryptoJS WordArray (big-endian)
             _toWordArray(bytes) {
@@ -56,7 +56,6 @@
             },
 
             // Encrypt one 16-byte block with AES-128-ECB, return first 16 bytes
-            // (matches Swift CCCrypt kCCEncrypt / kCCAlgorithmAES / kCCOptionECBMode)
             _ecbBlock(keyBytes, blockBytes) {
                 const key = this._toWordArray(keyBytes);
                 const blk = this._toWordArray(blockBytes);
@@ -76,7 +75,7 @@
                 return out;
             },
 
-            // Generate dynamic key — matches Swift generateDynamicKey(randomFix:)
+            // Generate dynamic key
             // offset = ASCII(lastChar) % 10; replace BASE_KEY[offset..offset+5] with randomFix
             generateDynamicKey(fix) {
                 if (fix.length !== 6) {
@@ -440,7 +439,6 @@
 
         async function initializeConnection() {
             // Generate a random 6-character alphanumeric string
-            // Swift parseRandomFix expects: [0x05][6 UTF-8 bytes]
             const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
             randomFix = '';
             for (let i = 0; i < 6; i++) {
