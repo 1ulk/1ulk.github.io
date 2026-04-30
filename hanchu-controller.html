@@ -894,7 +894,9 @@
         <a href="https://github.com/1ulk/hanchu-reader" target="_blank" rel="noopener noreferrer">View source on GitHub ↗</a>
     </div>
 
-    <!-- Parameter code registry — must load before hanchu-controller.js -->
+    <!-- Load order: params → crypt → ble → controller -->
     <script src="hanchu-params.js"></script>
+    <script src="hanchu-crypt.js"></script>
+    <script src="hanchu-ble.js"></script>
     <script src="hanchu-controller.js"></script>
 </body>
