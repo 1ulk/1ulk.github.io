@@ -6,7 +6,7 @@
             current: [],
             power: [],
             pvPower: [],
-            gridPower: [],
+            activePower: [],
             currentLoad: []
         };
 
@@ -82,7 +82,7 @@
                         [P.GRID_VOLTAGE]: { elem: 'gridVoltage' },
                         [P.GRID_CURRENT]: { elem: 'gridCurrent' },
                         [P.GRID_FREQUENCY]: { elem: 'gridFrequency' },
-                        [P.GRID_ACTIVE_POWER]: { elem: 'activePower', hist: 'gridPower' },
+                        [P.GRID_ACTIVE_POWER]: { elem: 'activePower', hist: 'activePower' },
                         [P.GRID_PURCHASED_TODAY]: { elem: 'powerPurchased' },
                         [P.GRID_SOLD_TODAY]: { elem: 'powerSold' },
                         [P.BATTERY_CHARGE_TODAY]: { elem: 'battChargeToday' },
@@ -467,9 +467,16 @@
                         tension: 0.3,
                         fill: false
                     }, {
-                        label: 'Grid Power (W)',
+                        label: 'Active Power (W)',
                         data: [],
                         borderColor: '#8b5cf6',
+                        backgroundColor: '#8b5cf615',
+                        tension: 0.3,
+                        fill: false
+                    }, {
+                        label: 'Grid Power (W)',
+                        data: [],
+                        borderColor: '#000000',
                         backgroundColor: '#8b5cf615',
                         tension: 0.3,
                         fill: false
@@ -510,7 +517,8 @@
             powerOverviewChart.data.labels = labels;
             powerOverviewChart.data.datasets[0].data = historicalData.power;
             powerOverviewChart.data.datasets[1].data = historicalData.pvPower;
-            powerOverviewChart.data.datasets[2].data = historicalData.gridPower;
+            powerOverviewChart.data.datasets[2].data = historicalData.activePower;
+            powerOverviewChart.data.datasets[3].data = historicalData.currentLoad;
             powerOverviewChart.update('none');
 
             // Battery Chart — normalise SOC: P071 is decimal 0.0–1.0

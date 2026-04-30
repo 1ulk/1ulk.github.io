@@ -64,9 +64,9 @@
             <div class="tabs">
                 <button class="tab active" onclick="switchTab('monitor')">📊 Monitor</button>
                 <button class="tab" onclick="switchTab('energy')">⚡ Energy Flow</button>
-                <button class="tab" onclick="switchTab('control')">🎛️ Control</button>
                 <button class="tab" onclick="switchTab('config')">🔧 Config</button>
                 <button class="tab" onclick="switchTab('analytics')">📈 Analytics</button>
+                <button class="tab" onclick="switchTab('control')">🎛️ Control</button>
             </div>
 
             <!-- Monitor Tab -->
@@ -363,32 +363,6 @@
             <!-- Control Tab -->
             <div id="controlTab" class="tab-content">
                 <div class="grid">
-                    <div class="card">
-                        <div class="card-header">
-                            <span class="card-icon">🎛️</span>
-                            <h2>Battery Controls</h2>
-                        </div>
-                        <div class="control-slider">
-                            <div class="slider-header">
-                                <span class="slider-label">Charge SOC Limit</span>
-                                <span class="slider-value" id="chargeSocValue">90%</span>
-                            </div>
-                            <input type="range" min="50" max="100" value="90" id="chargeSocSlider" 
-                                   oninput="updateSliderValue('chargeSocValue', this.value, '%')">
-                        </div>
-                        <div class="control-slider">
-                            <div class="slider-header">
-                                <span class="slider-label">Discharge SOC Limit</span>
-                                <span class="slider-value" id="dischargeSocValue">10%</span>
-                            </div>
-                            <input type="range" min="5" max="50" value="10" id="dischargeSocSlider"
-                                   oninput="updateSliderValue('dischargeSocValue', this.value, '%')">
-                        </div>
-                        <button class="btn btn-primary" onclick="writeParameter('P647', document.getElementById('chargeSocSlider').value).then(ok => setButtonState(this, ok ? 'success' : 'error')); setButtonState(this, 'loading')">
-                            Apply Charge Limit
-                        </button>
-                    </div>
-
                     <div class="card">
                         <div class="card-header">
                             <span class="card-icon">⚙️</span>
