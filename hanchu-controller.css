@@ -9,41 +9,19 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
-            padding-top: 56px;
         }
 
         .warning-bar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1000;
-            background: #92400e;
-            background: linear-gradient(90deg, #78350f, #b45309, #78350f);
-            color: #fef3c7;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 16px;
-            padding: 0 20px;
-            height: 36px;
-            font-size: 12.5px;
+            margin-top: 12px;
+            padding: 7px 12px;
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            font-size: 12px;
             font-weight: 500;
-            border-bottom: 1px solid #92400e;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            white-space: nowrap;
-            overflow: hidden;
         }
 
-        .warning-bar .warning-icon {
-            font-size: 14px;
-            flex-shrink: 0;
-        }
-
-        .warning-bar .warning-text {
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
 
         .footer {
             text-align: center;

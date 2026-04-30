@@ -11,19 +11,16 @@
     <!-- Chart.js (extracted to separate file for offline / WKWebView use) -->
     <script src="chart.umd.min.js"></script>
 
-    <link rel="stylesheet" href="hanchu-controller.css">
+    <link rel="stylesheet" href="hanchu-controller.css?v=4">
 </head>
 <body>
-    <div class="warning-bar">
-        <span class="warning-icon">⚠️</span>
-        <span class="warning-text">Use at your own risk — incorrect settings may damage your equipment.</span>
-    </div>
     <div class="container">
         <div class="header">
             <h1>
                 <span style="font-size: 32px;">⚡</span>
                 Hanchu BLE Controller
             </h1>
+            <div class="warning-bar">⚠️ Use at your own risk — incorrect settings may damage your equipment.</div>
             <div class="status">
                 <div class="status-indicator" id="statusIndicator"></div>
                 <span id="statusText">Disconnected</span>
@@ -70,7 +67,6 @@
                 <button class="tab" onclick="switchTab('control')">🎛️ Control</button>
                 <button class="tab" onclick="switchTab('config')">🔧 Config</button>
                 <button class="tab" onclick="switchTab('analytics')">📈 Analytics</button>
-                <button class="tab" onclick="switchTab('settings')">⚙️ Settings</button>
             </div>
 
             <!-- Monitor Tab -->
@@ -835,33 +831,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Settings Tab -->
-            <div id="settingsTab" class="tab-content">
-                <div class="card">
-                    <div class="card-header">
-                        <span class="card-icon">⚙️</span>
-                        <h2>Advanced Settings</h2>
-                    </div>
-                    <p style="color: #6b7280; margin-bottom: 20px;">
-                        Advanced parameter configuration and diagnostics
-                    </p>
-                    <div class="quick-actions">
-                        <button class="btn btn-secondary" onclick="readParameter('L023')">
-                            Read Logger Version
-                        </button>
-                        <button class="btn btn-secondary" onclick="readParameter('P006')">
-                            Read Inverter Version
-                        </button>
-                        <button class="btn btn-secondary" onclick="readParameter('B002')">
-                            Read Battery SN
-                        </button>
-                        <button class="btn btn-secondary" onclick="readParameter('P002')">
-                            Read Inverter SN
-                        </button>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -869,7 +838,6 @@
     <div class="footer">
         <a href="https://github.com/1ulk/hanchu-reader" target="_blank" rel="noopener noreferrer">View source on GitHub ↗</a>
     </div>
-
     <!-- Load order: params → crypt → ble → controller -->
     <script src="hanchu-params.js"></script>
     <script src="hanchu-crypt.js"></script>

@@ -256,7 +256,6 @@
             document.getElementById('disconnectBtn').style.display = 'none';
             document.getElementById('autoRefreshToggle').style.display = 'none';
             document.getElementById('autoRefreshLabel').style.display = 'none';
-            document.getElementById('connectedView').style.display = 'none';
             document.getElementById('autoRefreshCheckbox').checked = false;
         }
 
