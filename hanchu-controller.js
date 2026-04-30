@@ -577,8 +577,7 @@
 
             // P644 (currentLoad) = grid import/export. Positive = importing, negative = exporting.
             // Unit unconfirmed — assumed kW based on Monitor tab label; convert to W.
-            const gridRaw = parseFloat(document.getElementById('currentLoad')?.textContent) || 0;
-            const gridW   = gridRaw * 1000;
+            const gridW = parseFloat(document.getElementById('currentLoad')?.textContent) || 0;
 
             // P071 (BATTERY_SOC): decimal 0.0–1.0 or integer 0–100.
             // Guard: ≤1 → decimal, multiply by 100.
