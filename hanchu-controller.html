@@ -419,20 +419,6 @@
                         </button>
                     </div>
 
-                    <div class="card">
-                        <div class="card-header">
-                            <span class="card-icon">🔄</span>
-                            <h2>Quick Actions</h2>
-                        </div>
-                        <div class="quick-actions">
-                            <button class="btn btn-primary" onclick="refreshAllData()">
-                                🔄 Refresh Data
-                            </button>
-                            <button class="btn btn-secondary" onclick="switchTab('config'); document.querySelectorAll('.tab').forEach((t,i)=>{t.classList.toggle('active',i===2)});">
-                                🔧 Configure Mode
-                            </button>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -845,16 +831,6 @@
                         </div>
                         <div class="chart-container">
                             <canvas id="batteryChart"></canvas>
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <div class="card-header">
-                            <span class="card-icon">🌡️</span>
-                            <h2>Temperature</h2>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="temperatureChart"></canvas>
                         </div>
                     </div>
                 </div>

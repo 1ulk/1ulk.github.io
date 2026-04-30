@@ -5,7 +5,6 @@
             voltage: [],
             current: [],
             power: [],
-            temperature: [],
             pvPower: [],
             gridPower: [],
             currentLoad: []
@@ -14,7 +13,6 @@
         // Charts
         let powerOverviewChart = null;
         let batteryChart = null;
-        let temperatureChart = null;
 
         function log(message, type = 'info') {
             const timestamp = new Date().toLocaleTimeString();
@@ -477,7 +475,7 @@
                 }
             }) : null;
 
-            // Battery Chart
+            // Battery Chart — SOC only
             batteryChart = new Chart(document.getElementById('batteryChart'), {
                 ...chartConfig,
                 data: {
@@ -486,27 +484,17 @@
                         label: 'SOC (%)',
                         data: [],
                         borderColor: '#10b981',
-                        backgroundColor: '#10b98120'
-                    }, {
-                        label: 'Voltage (V)',
-                        data: [],
-                        borderColor: '#3b82f6',
-                        backgroundColor: '#3b82f620'
+                        backgroundColor: '#10b98120',
+                        tension: 0.3,
+                        fill: true
                     }]
-                }
-            });
-
-            // Temperature Chart
-            temperatureChart = new Chart(document.getElementById('temperatureChart'), {
-                ...chartConfig,
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Temperature (°C)',
-                        data: [],
-                        borderColor: '#ef4444',
-                        backgroundColor: '#ef444420'
-                    }]
+                },
+                options: {
+                    ...chartConfig.options,
+                    scales: {
+                        x: { display: true },
+                        y: { display: true, min: 0, max: 100, ticks: { callback: v => v + '%' } }
+                    }
                 }
             });
         }
@@ -523,16 +511,10 @@
             powerOverviewChart.data.datasets[2].data = historicalData.gridPower;
             powerOverviewChart.update('none');
 
-            // Battery Chart
+            // Battery Chart — normalise SOC: P071 is decimal 0.0–1.0
             batteryChart.data.labels = labels;
-            batteryChart.data.datasets[0].data = historicalData.soc;
-            batteryChart.data.datasets[1].data = historicalData.voltage;
+            batteryChart.data.datasets[0].data = historicalData.soc.map(v => v > 1 ? v : v * 100);
             batteryChart.update('none');
-
-            // Temperature Chart
-            temperatureChart.data.labels = labels;
-            temperatureChart.data.datasets[0].data = historicalData.temperature;
-            temperatureChart.update('none');
         }
 
         // ─── Energy Flow Diagram ──────────────────────────────────────────────
