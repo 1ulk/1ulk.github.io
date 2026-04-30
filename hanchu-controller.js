@@ -149,10 +149,14 @@
             }
         }
 
-        function setWorkMode(mode) {
-            writeParameter(P.WORK_MODE, mode);
-            const modes = ['Self-Consumption', 'Backup', 'User Defined', 'Off-Grid'];
-            log(`🔄 Setting work mode: ${modes[mode]}`);
+        async function setWorkMode(modeStr) {
+            const modes = ['undefined', 'selfconsumption', 'backup', 'userdefined', 'offgrid'];
+            let modeNum = modes.indexOf(modeStr)
+            if (modeNum <= 0){
+                log(`Modenum '${modeStr}' unknown`)
+                return false;
+            }
+            return await writeParameter(P.WORK_MODE, modeNum);
         }
 
         // ── Button feedback helpers ───────────────────────
@@ -329,7 +333,7 @@
             return h * 60 + m;
         }
 
-        async function applyModeConfig(modeKey, modeNum, btn) {
+        async function applyModeConfig(modeKey, btn) {
             if (!device || !device.gatt.connected) {
                 log('❌ Not connected', 'error');
                 return;
@@ -337,8 +341,6 @@
             setButtonState(btn, 'loading');
 
             const section  = document.getElementById(`config-${modeKey}`);
-            const modeNames = { selfconsumption: 'Self-Consumption', backup: 'Backup', userdefined: 'User Defined', offgrid: 'Off-Grid' };
-            log(`🔧 Applying ${modeNames[modeKey]} (P651=${modeNum})…`);
 
             // Params forced to 0 by disabled period toggles
             const forcedZero = new Set();
@@ -358,7 +360,7 @@
             });
 
             // 1. Set work mode first and wait for confirmation
-            const modeOk = await writeParameter(P.WORK_MODE, modeNum);
+            const modeOk = await setWorkMode(modeKey)
 
             // 2. Send all mode-specific parameters in one batch
             const paramsOk = await writeParameterBatch(pairs);
