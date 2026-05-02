@@ -218,6 +218,9 @@
                 : '—';
             updateTimeline();
         }
+        function secondsToTime(seconds) {
+            return minutesToTime(seconds / 60)
+        }
 
         function minutesToTime(minutes) {
             const m = Math.max(0, Math.min(1439, parseInt(minutes) || 0));
@@ -270,10 +273,10 @@
 
             items.forEach(({ k, v }) => {
                 if (k === P.WORK_MODE) {
-                    const idx      = parseInt(v) - 1;
+                    const idx      = parseInt(v);
                     const modeKey  = modeMap[idx];
-                    const names    = ['Self-Consumption', 'Backup', 'User Defined', 'Off-Grid'];
-                    const badges   = ['badge-green', 'badge-blue', 'badge-purple', 'badge-orange'];
+                    const names    = ['undefined', 'Self-Consumption', 'Backup', 'User Defined', 'Off-Grid'];
+                    const badges   = ['badge-green','badge-green', 'badge-blue', 'badge-purple', 'badge-orange'];
 
                     // Monitor tab badge
                     const el = document.getElementById('activeWorkMode');
@@ -292,7 +295,7 @@
 
                 document.querySelectorAll(`[data-param="${k}"]`).forEach(input => {
                     if (input.type === 'time') {
-                        const t = minutesToTime(parseInt(v) || 0);
+                        const t = secondsToTime(parseInt(v) || 0);
                         if (input.value !== t) {
                             input.value = t;
                             input.dispatchEvent(new Event('input')); // updates duration badge
@@ -332,6 +335,9 @@
             const [h, m] = timeStr.split(':').map(Number);
             return h * 60 + m;
         }
+        function timeToSeconds(timeStr) {
+            timeToMinutes(timeStr) * 60
+        }
 
         async function applyModeConfig(modeKey, btn) {
             if (!device || !device.gatt.connected) {
@@ -354,7 +360,7 @@
                 const k = el.dataset.param;
                 let v;
                 if (forcedZero.has(k))  v = 0;
-                else if (el.type === 'time') v = timeToMinutes(el.value);
+                else if (el.type === 'time') v = timeToSeconds(el.value);
                 else v = parseInt(el.value) || 0;
                 pairs.push({ k, v });
             });
