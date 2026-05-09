@@ -187,6 +187,7 @@
             document.querySelector(`.mode-btn[data-mode="${mode}"]`).classList.add('active');
             document.querySelectorAll('.config-section').forEach(s => s.classList.remove('active'));
             document.getElementById(`config-${mode}`).classList.add('active');
+            await readConfigParams(mode)
         }
 
         function togglePeriod(checkbox, startId, endId) {
@@ -250,17 +251,40 @@
         }
 
         // Read all config parameters from device
-        async function readConfigParams() {
+        async function readConfigParams(mode) {
             if (!device?.gatt?.connected) return;
             log('📖 Reading config parameters…');
+            
+            dataKeys = [P.CHARGE_POWER_LIMIT,
+                        P.DISCHARGE_POWER_LIMIT,
+                        P.MAX_SOC_LIMIT,
+                        P.CHARGE_TO_SOC,
+                        P.DISCHARGE_TO_SOC,
+                        P.MIN_SOC_CUTOFF]
+            
+            if (mode == 'userdefined'){
+                // userdefined
+                dataKeys += [
+                        P.CHARGE_P1_START,
+                        P.CHARGE_P1_END,
+                        P.CHARGE_P2_START,
+                        P.CHARGE_P2_END,
+                        P.CHARGE_P3_START,
+                        P.CHARGE_P3_END,
+                        P.DISCHARGE_P1_START,
+                        P.DISCHARGE_P1_END,
+                        P.DISCHARGE_P2_START,
+                        P.DISCHARGE_P2_END,
+                        P.DISCHARGE_P3_START,
+                        P.DISCHARGE_P3_END
+                    ]
+            } 
+
             await sendCommand({
-                cmd: 'local', act: '1',
+                cmd: 'local',
+                act: '1',
                 tid: '10001',
-                data: [P.WORK_MODE,
-                       P.CHARGE_P1_START,P.CHARGE_P1_END,P.CHARGE_P2_START,P.CHARGE_P2_END,P.CHARGE_P3_START,P.CHARGE_P3_END,
-                       P.DISCHARGE_P1_START,P.DISCHARGE_P1_END,P.DISCHARGE_P2_START,P.DISCHARGE_P2_END,P.DISCHARGE_P3_START,P.DISCHARGE_P3_END,
-                       P.CHARGE_POWER_LIMIT,P.DISCHARGE_POWER_LIMIT,P.MAX_SOC_LIMIT,P.CHARGE_TO_SOC,P.DISCHARGE_TO_SOC,P.MIN_SOC_CUTOFF
-                      ].map(k => ({ k }))
+                data: dataKeys.map(k => ({ k }))
             }, false);
         }
 
@@ -286,10 +310,12 @@
                     }
 
                     // Config tab "Active" pill — mark only the matching button
-                    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('device-active'));
-                    if (modeKey) document.querySelector(`.mode-btn[data-mode="${modeKey}"]`)?.classList.add('device-active');
-
-                    if (modeKey) switchConfigMode(modeKey);
+                    const activeBtn = modeKey ? document.querySelector(`.mode-btn[data-mode="${modeKey}"]`) : null;
+                    if (!activeBtn?.classList.contains('device-active')) {
+                        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('device-active'));
+                        activeBtn?.classList.add('device-active');
+                        if (modeKey) switchConfigMode(modeKey);
+                    }
                     return;
                 }
 
@@ -364,18 +390,18 @@
                 else v = parseInt(el.value) || 0;
                 pairs.push({ k, v });
             });
-
-            // 1. Set work mode first and wait for confirmation
-            const modeOk = await setWorkMode(modeKey)
-
-            // 2. Send all mode-specific parameters in one batch
+            
+            const modes = ['undefined', 'selfconsumption', 'backup', 'userdefined', 'offgrid'];
+            let modeNum = modes.indexOf(modeStr);
+            const k = P.WORK_MODE;
+            pairs.push({ k, modeNum} );
             const paramsOk = await writeParameterBatch(pairs);
-
             const ok = modeOk && paramsOk;
+            
             setButtonState(btn, ok ? 'success' : 'error');
             if (ok) {
                 log(`✅ ${modeNames[modeKey]} configuration applied`, 'success');
-                await readConfigParams();
+                await readConfigParams(modeKey);
             }
         }
 

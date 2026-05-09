@@ -474,9 +474,23 @@
             await sendCommand({
                 cmd: 'local', act: '1',
                 tid: '10001',
-                data: [P.BATTERY_SOC,P.BATTERY_TERMINAL_VOLTAGE,P.BATTERY_CURRENT,P.BATTERY_POWER,P.BATTERY_TEMPERATURE,
-                       P.PV1_VOLTAGE,P.PV1_CURRENT,P.PV2_VOLTAGE,P.PV2_CURRENT,P.PV_POWER_TOTAL, P.LOAD,
-                       P.GRID_VOLTAGE,P.GRID_CURRENT,P.GRID_FREQUENCY,P.GRID_ACTIVE_POWER].map(k => ({ k }))
+                data: [ P.BATTERY_SOC,
+                        P.BATTERY_TERMINAL_VOLTAGE,
+                        P.BATTERY_CURRENT,
+                        P.BATTERY_POWER,
+                        P.BATTERY_TEMPERATURE,
+                        P.PV1_VOLTAGE,
+                        P.PV1_CURRENT,
+                        P.PV2_VOLTAGE,
+                        P.PV2_CURRENT,
+                        P.PV_POWER_TOTAL,
+                        P.LOAD,
+                        P.GRID_VOLTAGE,
+                        P.GRID_CURRENT,
+                        P.GRID_FREQUENCY,
+                        P.GRID_ACTIVE_POWER,
+                        P.WORK_MODE
+                    ].map(k => ({ k }))
             }, false);
         }
 
@@ -486,7 +500,14 @@
             await sendCommand({
                 cmd: 'local', act: '1',
                 tid: '10001',
-                data: [P.GRID_PURCHASED_TODAY,P.GRID_SOLD_TODAY,P.BATTERY_CHARGE_TODAY,P.BATTERY_DISCHARGE_TODAY,P.PV_ENERGY_TODAY,P.PV_ENERGY_ACCUMULATED,P.POWER_ON].map(k => ({ k }))
+                data: [ P.GRID_PURCHASED_TODAY,
+                        P.GRID_SOLD_TODAY,
+                        P.BATTERY_CHARGE_TODAY,
+                        P.BATTERY_DISCHARGE_TODAY,
+                        P.PV_ENERGY_TODAY,
+                        P.PV_ENERGY_ACCUMULATED,
+                        P.POWER_ON
+                    ].map(k => ({ k }))
             }, false);
         }
 
@@ -496,7 +517,7 @@
                 cmd: 'local',
                 act: '1',
                 tid: '10001',
-                data: [P.INVERTER_SERIAL, P.BATTERY_SERIAL, P.INVERTER_FIRMWARE, P.BMS_FIRMWARE, P.WORK_MODE].map(k => ({ k }))
+                data: [P.INVERTER_SERIAL, P.BATTERY_SERIAL, P.INVERTER_FIRMWARE, P.BMS_FIRMWARE].map(k => ({ k }))
             }, false);
         }
 
