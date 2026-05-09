@@ -215,13 +215,22 @@
             width: 100%;
             height: 6px;
             border-radius: 3px;
-            background: #e5e7eb;
-            outline: none;
+            /* appearance: none is required for the custom background gradient to render */
             -webkit-appearance: none;
+            appearance: none;
+            /* Track shows a faint tick at --shadow-pos (confirmed device value).
+               Default -3px keeps it off-screen until first device read. */
+            background: linear-gradient(to right,
+                #e5e7eb 0%,
+                #e5e7eb calc(var(--shadow-pos, -3px) - 1.5px),
+                rgba(102, 126, 234, 0.5) calc(var(--shadow-pos, -3px) - 1.5px),
+                rgba(102, 126, 234, 0.5) calc(var(--shadow-pos, -3px) + 1.5px),
+                #e5e7eb calc(var(--shadow-pos, -3px) + 1.5px)
+            );
+            outline: none;
         }
 
         input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
             appearance: none;
             width: 20px;
             height: 20px;

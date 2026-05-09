@@ -186,8 +186,13 @@
             document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
             document.querySelector(`.mode-btn[data-mode="${mode}"]`).classList.add('active');
             document.querySelectorAll('.config-section').forEach(s => s.classList.remove('active'));
-            document.getElementById(`config-${mode}`).classList.add('active');
-            await readConfigParams(mode)
+            const section = document.getElementById(`config-${mode}`);
+            section.classList.add('active');
+
+            // Allow incoming device data to re-populate inputs for this section
+            section.querySelectorAll('[data-param]').forEach(el => delete el.dataset.initialized);
+
+            if (device?.gatt?.connected) readConfigParams(mode);
         }
 
         function togglePeriod(checkbox, startId, endId) {
@@ -321,15 +326,20 @@
 
                 document.querySelectorAll(`[data-param="${k}"]`).forEach(input => {
                     if (input.type === 'time') {
-                        const t = secondsToTime(parseInt(v) || 0);
-                        if (input.value !== t) {
-                            input.value = t;
-                            input.dispatchEvent(new Event('input')); // updates duration badge
+                        input.dataset.shadowVal = String(parseInt(v) || 0);
+                        if (!input.dataset.initialized) {
+                            input.value = secondsToTime(parseInt(v) || 0);
+                            input.dispatchEvent(new Event('input'));
+                            input.dataset.initialized = '1';
                             touchedTimeInput = true;
                         }
                     } else if (input.type === 'range') {
-                        input.value = v;
-                        input.dispatchEvent(new Event('input')); // updates label display
+                        if (!input.dataset.initialized) {
+                            input.value = v;
+                            input.dispatchEvent(new Event('input'));
+                            input.dataset.initialized = '1';
+                        }
+                        setSliderShadow(input, v);
                     }
                 });
 
@@ -362,7 +372,7 @@
             return h * 60 + m;
         }
         function timeToSeconds(timeStr) {
-            timeToMinutes(timeStr) * 60
+            return timeToMinutes(timeStr) * 60;
         }
 
         async function applyModeConfig(modeKey, btn) {
@@ -380,7 +390,7 @@
                 if (!cb.checked) cb.dataset.periodFor.split(',').forEach(p => forcedZero.add(p.trim()));
             });
 
-            // Collect all {k, v} pairs from data-param inputs
+            // Collect only changed {k, v} pairs from data-param inputs
             const pairs = [];
             section.querySelectorAll('[data-param]').forEach(el => {
                 const k = el.dataset.param;
@@ -388,30 +398,37 @@
                 if (forcedZero.has(k))  v = 0;
                 else if (el.type === 'time') v = timeToSeconds(el.value);
                 else v = parseInt(el.value) || 0;
+
+                // Skip if confirmed device value matches — nothing to write
+                if (el.dataset.shadowVal !== undefined && parseInt(el.dataset.shadowVal) === v) return;
                 pairs.push({ k, v });
             });
-            
+
             const modes = ['undefined', 'selfconsumption', 'backup', 'userdefined', 'offgrid'];
-            let modeNum = modes.indexOf(modeStr);
+            const v = modes.indexOf(modeKey);
             const k = P.WORK_MODE;
-            pairs.push({ k, modeNum} );
+            pairs.push({ k, v });
+
             const paramsOk = await writeParameterBatch(pairs);
-            const ok = modeOk && paramsOk;
+            setButtonState(btn, paramsOk ? 'success' : 'error');
+            log(`✅ ${modes.indexOf[modeKey]} configuration applied`, 'success');
             
-            setButtonState(btn, ok ? 'success' : 'error');
-            if (ok) {
-                log(`✅ ${modeNames[modeKey]} configuration applied`, 'success');
-                await readConfigParams(modeKey);
-            }
+            await readConfigParams(modeKey);
         }
 
         async function writePowerLimits(btn) {
             setButtonState(btn, 'loading');
+            const chargeSlider    = document.getElementById('chargePowerSlider');
+            const dischargeSlider = document.getElementById('dischargePowerSlider');
             const ok = await writeParameterBatch([
-                { k: P.CHARGE_POWER_LIMIT, v: parseInt(document.getElementById('chargePowerSlider').value) },
-                { k: P.DISCHARGE_POWER_LIMIT, v: parseInt(document.getElementById('dischargePowerSlider').value) }
+                { k: P.CHARGE_POWER_LIMIT,    v: parseInt(chargeSlider.value) },
+                { k: P.DISCHARGE_POWER_LIMIT, v: parseInt(dischargeSlider.value) }
             ]);
             setButtonState(btn, ok ? 'success' : 'error');
+            if (ok) {
+                setSliderShadow(chargeSlider,    chargeSlider.value);
+                setSliderShadow(dischargeSlider, dischargeSlider.value);
+            }
         }
 
         async function toggleDevicePower(btn) {
@@ -435,6 +452,14 @@
             document.getElementById(elementId).textContent = value + unit;
         }
 
+        function setSliderShadow(input, value) {
+            const min = parseFloat(input.min) || 0;
+            const max = parseFloat(input.max) || 100;
+            const pct = Math.min(1, Math.max(0, (Number(value) - min) / (max - min)));
+            input.style.setProperty('--shadow-pos', `calc(10px + ${pct} * (100% - 20px))`);
+            input.dataset.shadowVal = value;
+        }
+
         function switchTab(tabName) {
             document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
             event.target.classList.add('active');
@@ -443,7 +468,8 @@
             document.getElementById(tabName + 'Tab').classList.add('active');
 
             if (tabName === 'config' && device?.gatt?.connected) {
-                readConfigParams();
+                const activeMode = document.querySelector('.mode-btn.device-active')?.dataset.mode;
+                readConfigParams(activeMode);
             }
             if (tabName === 'energy') {
                 updateEnergyFlow();
