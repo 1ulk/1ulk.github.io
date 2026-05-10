@@ -67,6 +67,7 @@
                 <button class="tab" onclick="switchTab('config')">🔧 Config</button>
                 <button class="tab" onclick="switchTab('analytics')">📈 Analytics</button>
                 <button class="tab" onclick="switchTab('control')">🎛️ Control</button>
+                <button class="tab" onclick="switchTab('agile')">🐙 Agile</button>
             </div>
 
             <!-- Monitor Tab -->
@@ -804,6 +805,61 @@
                         </div>
                     </div>
                 </div>
+            <!-- Agile Tab -->
+            <div id="agileTab" class="tab-content">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon">🐙</span>
+                        <h2>Octopus Agile Schedule</h2>
+                    </div>
+
+                    <div class="agile-settings">
+                        <div class="agile-setting-row">
+                            <label class="agile-setting-label">Grid region</label>
+                            <select id="agileRegion" class="agile-select"></select>
+                        </div>
+                        <div class="agile-setting-row">
+                            <label class="agile-setting-label">Charge for</label>
+                            <div style="flex:1">
+                                <div class="slider-header">
+                                    <span></span>
+                                    <span class="slider-value" id="agileChargeHoursVal">4h</span>
+                                </div>
+                                <input type="range" min="1" max="8" step="0.5" value="4" id="agileChargeHours"
+                                       oninput="document.getElementById('agileChargeHoursVal').textContent=this.value+'h'">
+                            </div>
+                        </div>
+                        <div class="agile-setting-row">
+                            <label class="agile-setting-label">Discharge for</label>
+                            <div style="flex:1">
+                                <div class="slider-header">
+                                    <span></span>
+                                    <span class="slider-value" id="agileDischargeHoursVal">2h</span>
+                                </div>
+                                <input type="range" min="0.5" max="6" step="0.5" value="2" id="agileDischargeHours"
+                                       oninput="document.getElementById('agileDischargeHoursVal').textContent=this.value+'h'">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary" onclick="fetchAndSuggestAgile(this)" style="margin-top:12px;">
+                        🔍 Fetch Prices &amp; Suggest
+                    </button>
+
+                    <div id="agileChartWrap" style="display:none; margin-top:20px;">
+                        <canvas id="agileChartCanvas" height="160"></canvas>
+                    </div>
+
+                    <div id="agileSummary" style="display:none; margin-top:16px;"></div>
+
+                    <button id="agileApplyBtn" class="btn btn-primary"
+                            onclick="applyAgileSchedule(this)"
+                            style="display:none; margin-top:12px; width:100%; justify-content:center;">
+                        ✅ Apply Schedule to Inverter
+                    </button>
+                </div>
+            </div>
+
             </div>
         </div>
     </div>
@@ -812,9 +868,10 @@
     <div class="footer">
         <a href="https://github.com/1ulk/hanchu-reader" target="_blank" rel="noopener noreferrer">View source on GitHub ↗</a>
     </div>
-    <!-- Load order: params → crypt → ble → controller -->
+    <!-- Load order: params → crypt → ble → controller → agile -->
     <script src="hanchu-params.js"></script>
     <script src="hanchu-crypt.js"></script>
     <script src="hanchu-ble.js"></script>
     <script src="hanchu-controller.js"></script>
+    <script src="hanchu-agile.js"></script>
 </body>

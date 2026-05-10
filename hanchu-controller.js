@@ -267,22 +267,15 @@
                         P.DISCHARGE_TO_SOC,
                         P.MIN_SOC_CUTOFF]
             
-            if (mode == 'userdefined'){
-                // userdefined
-                dataKeys += [
-                        P.CHARGE_P1_START,
-                        P.CHARGE_P1_END,
-                        P.CHARGE_P2_START,
-                        P.CHARGE_P2_END,
-                        P.CHARGE_P3_START,
-                        P.CHARGE_P3_END,
-                        P.DISCHARGE_P1_START,
-                        P.DISCHARGE_P1_END,
-                        P.DISCHARGE_P2_START,
-                        P.DISCHARGE_P2_END,
-                        P.DISCHARGE_P3_START,
-                        P.DISCHARGE_P3_END
-                    ]
+            if (mode === 'userdefined') {
+                dataKeys.push(
+                    P.CHARGE_P1_START,    P.CHARGE_P1_END,
+                    P.CHARGE_P2_START,    P.CHARGE_P2_END,
+                    P.CHARGE_P3_START,    P.CHARGE_P3_END,
+                    P.DISCHARGE_P1_START, P.DISCHARGE_P1_END,
+                    P.DISCHARGE_P2_START, P.DISCHARGE_P2_END,
+                    P.DISCHARGE_P3_START, P.DISCHARGE_P3_END
+                );
             } 
 
             await sendCommand({
@@ -733,7 +726,8 @@
 
         // Verify required libraries loaded
         window.addEventListener('DOMContentLoaded', () => {
-            updateTimeline(); // draw default period segments
+            updateTimeline();
+            initAgileTab();
             const issues = [];
 
             if (typeof CryptoJS === 'undefined') {

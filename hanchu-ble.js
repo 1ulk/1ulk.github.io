@@ -279,7 +279,7 @@
             const value = event.target.value;
             const data = new Uint8Array(value.buffer);
 
-            log(`📨 RX ${data.length} bytes | first byte: 0x${data[0]?.toString(16).padStart(2,'0') ?? '??'}`);
+            //log(`📨 RX ${data.length} bytes | first byte: 0x${data[0]?.toString(16).padStart(2,'0') ?? '??'}`);
 
             try {
                 // Decrypt the response
@@ -288,7 +288,7 @@
                     log('❌ Decryption failed', 'error');
                     return;
                 }
-                log(`🔓 Decrypted ${decrypted.length} bytes | first byte: 0x${decrypted[0]?.toString(16).padStart(2,'0') ?? '??'}`);
+                //log(`🔓 Decrypted ${decrypted.length} bytes | first byte: 0x${decrypted[0]?.toString(16).padStart(2,'0') ?? '??'}`);
 
                 // Check if LOCAL mode (starts with 0x03)
                 let jsonString;
@@ -302,7 +302,7 @@
                     log(`📄 STANDARD mode | json len=${jsonString.length}`);
                 }
 
-                log(`📄 JSON: ${jsonString.substring(0, 120)}`);
+                //log(`📄 JSON: ${jsonString.substring(0, 120)}`);
 
                 const parsed = JSON.parse(jsonString);
                 const items = parsed.data;
@@ -359,7 +359,7 @@
                 } else {
                     // STANDARD MODE - raw JSON
                     dataToEncrypt = jsonData;
-                    log('📄 Using STANDARD mode (raw JSON)');
+                    //log('📄 Using STANDARD mode (raw JSON)');
                 }
 
                 // Encrypt and send
