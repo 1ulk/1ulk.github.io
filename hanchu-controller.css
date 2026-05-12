@@ -624,6 +624,18 @@
         .period-card.charge-period    { border-left: 3px solid #10b981; }
         .period-card.discharge-period { border-left: 3px solid #f59e0b; }
         .period-card.disabled-period  { opacity: 0.45; }
+        .period-card.overlap-error    { border-color: #ef4444; background: #fef2f2; }
+        .overlap-warning {
+            display: none;
+            background: #fef2f2;
+            border: 1px solid #fca5a5;
+            border-radius: 8px;
+            color: #b91c1c;
+            font-size: 13px;
+            padding: 10px 14px;
+            margin-bottom: 10px;
+        }
+        .overlap-warning.visible { display: block; }
         .period-card-header {
             display: flex;
             align-items: center;

@@ -233,6 +233,58 @@
             return `${Math.floor(m / 60).toString().padStart(2, '0')}:${(m % 60).toString().padStart(2, '0')}`;
         }
 
+        // Returns array of conflict strings; highlights overlapping/touching cards and shows warning banner.
+        // Two periods are invalid if they overlap OR touch (end of A == start of B counts as invalid).
+        function validatePeriodOverlaps() {
+            const allPeriods = [
+                { cardId: 'card-p1', sId: 'ud-p1-start', eId: 'ud-p1-end', name: 'Charge 1' },
+                { cardId: 'card-p2', sId: 'ud-p2-start', eId: 'ud-p2-end', name: 'Charge 2' },
+                { cardId: 'card-p3', sId: 'ud-p3-start', eId: 'ud-p3-end', name: 'Charge 3' },
+                { cardId: 'card-p4', sId: 'ud-p4-start', eId: 'ud-p4-end', name: 'Discharge 1' },
+                { cardId: 'card-p5', sId: 'ud-p5-start', eId: 'ud-p5-end', name: 'Discharge 2' },
+                { cardId: 'card-p6', sId: 'ud-p6-start', eId: 'ud-p6-end', name: 'Discharge 3' },
+            ];
+
+            document.querySelectorAll('.period-card.overlap-error').forEach(c => c.classList.remove('overlap-error'));
+
+            const active = allPeriods
+                .map(p => {
+                    const sEl = document.getElementById(p.sId);
+                    const eEl = document.getElementById(p.eId);
+                    if (!sEl || !eEl || sEl.disabled) return null;
+                    const s = timeToSeconds(sEl.value);
+                    const e = timeToSeconds(eEl.value);
+                    if (e <= s) return null; // zero-length or unset period
+                    return { ...p, s, e };
+                })
+                .filter(Boolean);
+
+            const conflicts = [];
+            for (let i = 0; i < active.length; i++) {
+                for (let j = i + 1; j < active.length; j++) {
+                    const a = active[i], b = active[j];
+                    // No gap (or touching) = conflict: valid only if a ends strictly before b starts or vice-versa
+                    if (!(a.e < b.s || b.e < a.s)) {
+                        conflicts.push(`${a.name} and ${b.name}`);
+                        document.getElementById(a.cardId)?.classList.add('overlap-error');
+                        document.getElementById(b.cardId)?.classList.add('overlap-error');
+                    }
+                }
+            }
+
+            const warning = document.getElementById('overlapWarning');
+            if (warning) {
+                if (conflicts.length) {
+                    warning.textContent = '⚠️ Overlapping periods: ' + conflicts.join(' · ');
+                    warning.classList.add('visible');
+                } else {
+                    warning.classList.remove('visible');
+                }
+            }
+
+            return conflicts;
+        }
+
         function updateTimeline() {
             const segs = [
                 { s: 'ud-p1-start', e: 'ud-p1-end', id: 'tl-p1' },
@@ -253,6 +305,7 @@
                 seg.style.left  = valid ? `${(sMin / 1440) * 100}%` : '0%';
                 seg.style.width = valid ? `${((eMin - sMin) / 1440) * 100}%` : '0%';
             });
+            validatePeriodOverlaps();
         }
 
         // Read all config parameters from device
@@ -291,22 +344,19 @@
             if (!items?.length) return;
             // Has to start at 1
             const modeMap = { 1: 'selfconsumption', 2: 'backup', 3: 'userdefined', 4: 'offgrid' };
+            const names    = ['undefined', 'Self-Consumption', 'Backup', 'User Defined', 'Off-Grid'];
+            const badges   = ['badge-green','badge-green', 'badge-blue', 'badge-purple', 'badge-orange'];
             let touchedTimeInput = false;
-
             items.forEach(({ k, v }) => {
                 if (k === P.WORK_MODE) {
                     const idx      = parseInt(v);
                     const modeKey  = modeMap[idx];
-                    const names    = ['undefined', 'Self-Consumption', 'Backup', 'User Defined', 'Off-Grid'];
-                    const badges   = ['badge-green','badge-green', 'badge-blue', 'badge-purple', 'badge-orange'];
-
                     // Monitor tab badge
                     const el = document.getElementById('activeWorkMode');
                     if (el) {
                         el.textContent = names[idx] ?? `Mode ${idx}`;
                         el.className   = `badge ${badges[idx] ?? 'badge-blue'}`;
                     }
-
                     // Config tab "Active" pill — mark only the matching button
                     const activeBtn = modeKey ? document.querySelector(`.mode-btn[data-mode="${modeKey}"]`) : null;
                     if (!activeBtn?.classList.contains('device-active')) {
@@ -314,7 +364,6 @@
                         activeBtn?.classList.add('device-active');
                         if (modeKey) switchConfigMode(modeKey);
                     }
-                    return;
                 }
 
                 document.querySelectorAll(`[data-param="${k}"]`).forEach(input => {
@@ -337,10 +386,34 @@
                 });
 
                 // Re-enable period card if device reports a non-zero period
-                if ([P.CHARGE_P2_START,P.CHARGE_P3_START,P.DISCHARGE_P1_START,P.DISCHARGE_P2_START,P.DISCHARGE_P3_START].includes(k) && parseInt(v) > 0) {
-                    const cardMap  = { [P.CHARGE_P2_START]:'card-p2', [P.CHARGE_P3_START]:'card-p3', [P.DISCHARGE_P1_START]:'card-p4', [P.DISCHARGE_P2_START]:'card-p5', [P.DISCHARGE_P3_START]:'card-p6' };
-                    const startMap = { [P.CHARGE_P2_START]:'ud-p2-start', [P.CHARGE_P3_START]:'ud-p3-start', [P.DISCHARGE_P1_START]:'ud-p4-start', [P.DISCHARGE_P2_START]:'ud-p5-start', [P.DISCHARGE_P3_START]:'ud-p6-start' };
-                    const endMap   = { [P.CHARGE_P2_START]:'ud-p2-end',   [P.CHARGE_P3_START]:'ud-p3-end',   [P.DISCHARGE_P1_START]:'ud-p4-end',   [P.DISCHARGE_P2_START]:'ud-p5-end',   [P.DISCHARGE_P3_START]:'ud-p6-end' };
+                if ([
+                    P.CHARGE_P1_START,
+                    P.CHARGE_P2_START,
+                    P.CHARGE_P3_START,
+                    P.DISCHARGE_P1_START,
+                    P.DISCHARGE_P2_START,
+                    P.DISCHARGE_P3_START ].includes(k) && parseInt(v) > 0) {
+                    const cardMap  = { 
+                        [P.CHARGE_P1_START]: 'card-p1',
+                        [P.CHARGE_P2_START]: 'card-p2',
+                        [P.CHARGE_P3_START]: 'card-p3', 
+                        [P.DISCHARGE_P1_START]:'card-p4', 
+                        [P.DISCHARGE_P2_START]:'card-p5', 
+                        [P.DISCHARGE_P3_START]:'card-p6' };
+                    const startMap = { 
+                        [P.CHARGE_P1_START]:'ud-p1-start',
+                        [P.CHARGE_P2_START]:'ud-p2-start',
+                        [P.CHARGE_P3_START]:'ud-p3-start',
+                        [P.DISCHARGE_P1_START]:'ud-p4-start',
+                        [P.DISCHARGE_P2_START]:'ud-p5-start',
+                        [P.DISCHARGE_P3_START]:'ud-p6-start' };
+                    const endMap   = { 
+                        [P.CHARGE_P1_START]: 'ud-p1-end',
+                        [P.CHARGE_P2_START]: 'ud-p2-end',
+                        [P.CHARGE_P3_START]: 'ud-p3-end',
+                        [P.DISCHARGE_P1_START]:'ud-p4-end',
+                        [P.DISCHARGE_P2_START]:'ud-p5-end',
+                        [P.DISCHARGE_P3_START]:'ud-p6-end' };
                     const card  = document.getElementById(cardMap[k]);
                     const startEl = document.getElementById(startMap[k]);
                     const endEl   = document.getElementById(endMap[k]);
@@ -373,6 +446,15 @@
                 log('❌ Not connected', 'error');
                 return;
             }
+
+            if (modeKey === 'userdefined') {
+                const conflicts = validatePeriodOverlaps();
+                if (conflicts.length) {
+                    log(`❌ Cannot apply: overlapping periods — ${conflicts.join(', ')}`, 'error');
+                    return;
+                }
+            }
+
             setButtonState(btn, 'loading');
 
             const section  = document.getElementById(`config-${modeKey}`);
@@ -404,7 +486,8 @@
 
             const paramsOk = await writeParameterBatch(pairs);
             setButtonState(btn, paramsOk ? 'success' : 'error');
-            log(`✅ ${modes.indexOf[modeKey]} configuration applied`, 'success');
+            log(modeKey);
+            log(`✅ ${modes.indexOf(modeKey)} configuration applied`, 'success');
             
             await readConfigParams(modeKey);
         }
