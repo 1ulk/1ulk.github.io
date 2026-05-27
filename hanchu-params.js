@@ -278,4 +278,5 @@ const P = {
     LOAD: 'P644',
     // ── Also referenced in code ──────────────────────────────────────────────
     BMS_FIRMWARE:               'L023',  // alias kept for backward compat — same as DTU_FIRMWARE
+    WIFI_CLEAR:                 'L021',
 };

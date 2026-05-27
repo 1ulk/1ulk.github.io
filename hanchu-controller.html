@@ -68,6 +68,7 @@
                 <button class="tab" onclick="switchTab('analytics')">📈 Analytics</button>
                 <button class="tab" onclick="switchTab('control')">🎛️ Control</button>
                 <button class="tab" onclick="switchTab('agile')">🐙 Agile</button>
+                <button class="tab" onclick="switchTab('commands')">Commands</button>
             </div>
 
             <!-- Monitor Tab -->
@@ -811,6 +812,32 @@
                         </div>
                     </div>
                 </div>
+            </div>
+            <div id="commandsTab" class="tab-content">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-icon">📈</span>
+                        <h2>Additional Commands</h2>
+                    </div>
+                    <div class="export-section">
+                        <button class="btn" onclick="commandPing()">
+                            Ping
+                        </button>
+                        <div style="flex: 1;"></div>
+                        <button class="btn" onclick="commandTime()">
+                            Time
+                        </button>
+                        <div style="flex: 1;"></div>
+                        <button class="btn" onclick="commandWifiClear()">
+                            Wifi Clear
+                        </button>
+                        <div style="flex: 1;"></div>
+                        <button class="btn" onclick="commandWifiReboot()">
+                            Wifi Reboot
+                        </button>
+                    </div>
+                </div>
+            
             <!-- Agile Tab -->
             <div id="agileTab" class="tab-content">
                 <div class="card">

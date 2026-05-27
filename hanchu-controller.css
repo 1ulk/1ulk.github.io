@@ -124,6 +124,39 @@
             cursor: not-allowed;
         }
 
+        .btn.pending {
+            opacity: 0.7;
+            cursor: wait;
+        }
+
+        .btn.pending::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.15) 50%, transparent 75%);
+        background-size: 200% 100%;
+        animation: btn-shimmer 1.2s infinite linear;
+        }
+
+        @keyframes btn-shimmer {
+            from { background-position: 200% 0; }
+            to   { background-position: -200% 0; }
+        }
+
+        .btn.success {
+            background-color: #16a34a !important;
+            color: #fff !important;
+            border-color: #15803d !important;
+            transform: scale(1.03);
+        }
+
+        .btn.error {
+            background-color: #dc2626 !important;
+            color: #fff !important;
+            border-color: #b91c1c !important;
+        }
+        
         .grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(min(350px, 100%), 1fr));

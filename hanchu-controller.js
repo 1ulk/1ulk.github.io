@@ -179,6 +179,49 @@
                 }, ok ? 2500 : 3500);
             }
         }
+        function setBtnState(btn, state, label = null, durationMs = 3500) {
+        // Save original text the first time
+        if (!btn._originalText) {
+            btn._originalText = btn.textContent.trim();
+        }
+
+        btn.classList.remove('pending', 'success', 'error');
+        btn.disabled = false;
+
+        if (state === 'pending') {
+            btn.classList.add('pending');
+            btn.disabled = true;
+            if (label) btn.textContent = label;
+        } else if (state === 'success' || state === 'error') {
+            btn.classList.add(state);
+            if (label) btn.textContent = label;
+            setTimeout(() => {
+            btn.classList.remove(state);
+            btn.textContent = btn._originalText;  // restore
+            }, durationMs);
+        } else {
+            btn.textContent = btn._originalText;    // reset
+        }
+        }
+
+        function setButtonPending(btn, responseKey, timeoutMs = 5000) {
+            // Cancel any previous timeout on this button
+            if (btn._pendingTimeout) {
+                clearTimeout(btn._pendingTimeout);
+            }
+
+            setBtnState(btn, 'pending');
+            window.pendingCommands[responseKey] = btn;
+
+            btn._pendingTimeout = setTimeout(() => {
+                if (window.pendingCommands[responseKey] === btn) {
+                delete window.pendingCommands[responseKey];
+                setBtnState(btn, 'error');         // flashes red, re-enables button
+                log(`⏱ Timeout: no response for '${responseKey}'`);
+                }
+            }, timeoutMs);
+        }
+
 
         // ── Config tab ────────────────────────────────────
 
@@ -337,6 +380,32 @@
                 tid: '10001',
                 data: dataKeys.map(k => ({ k }))
             }, false);
+        }
+
+        function commandPing(){
+            const btn = document.querySelector('[onclick="commandPing()"]');
+            setButtonPending(btn, 'pong');
+            window.pendingCommands['pong'] = btn; 
+            log('Sending ping');
+            sendCommand({cmd: 'ping'}, false);
+        }
+        function commandTime(){
+            const btn = document.querySelector('[onclick="commandTime()"]');
+            setButtonPending(btn, 'time');
+            window.pendingCommands['time'] = btn;
+            log('Sending time');
+            sendCommand({cmd: 'time'}, false);
+        }
+        function commandWifiReboot(){
+            const btn = document.querySelector('[onclick="commandWifiReboot()"]');
+            setButtonPending(btn, 'wifireboot');
+            window.pendingCommands['wifireboot'] = btn;
+            log('Sending Wifi Reboot');
+            sendCommand({cmd: 'WiFi_Reboot'}, false);
+        }
+        function commandWifiClear(){
+            log('Sending Wifi Clear');
+            writeParameter(P.WIFI_CLEAR, 1);
         }
 
         // Populate config form fields from incoming BLE data

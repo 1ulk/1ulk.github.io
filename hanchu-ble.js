@@ -14,6 +14,7 @@
 
         // Pending write confirmations: key → { resolve, reject, timeoutId }
         const pendingWrites = new Map();
+        window.pendingCommands = {};
 
         // Retry getPrimaryService with exponential backoff — GATT service discovery
         // on iOS/macOS can lag behind the connect callback by several hundred ms.
@@ -302,29 +303,67 @@
                     log(`📄 STANDARD mode | json len=${jsonString.length}`);
                 }
 
-                //log(`📄 JSON: ${jsonString.substring(0, 120)}`);
 
                 const parsed = JSON.parse(jsonString);
-                const items = parsed.data;
 
-                if (!items || !Array.isArray(items)) {
-                    log(`⚠️ No data array in response (keys: ${Object.keys(parsed).join(', ')})`, 'error');
-                    return;
+                if(parsed.hasOwnProperty('data'))
+                {
+                    const items = parsed.data;
+
+                    if (!items || !Array.isArray(items)) {
+                        log(`⚠️ No data array in response (keys: ${Object.keys(parsed).join(', ')})`, 'error');
+                        return;
+                    }
+
+                    log(`✅ Parsed ${items.length} items: ${items.map(i => `${i.k}=${i.v}`).join(', ')}`);
+
+                    // Resolve any pending write confirmations (v === 0 means success)
+                    items.forEach(item => {
+                        const pending = pendingWrites.get(item.k);
+                        if (pending && item.v === 0) {
+                            log(`✅ Write confirmed: ${item.k}`);
+                            pending.resolve();
+                        }
+                    });
+
+                    try { populateConfigInputs(items); } catch(e) { log(`⚠️ Config populate error: ${e.message}`, 'error'); }
+                    updateUIWithData(parsed);
+                }
+                else if(parsed.hasOwnProperty('cmd'))
+                {   
+                    if (parsed.cmd == 'pong'){
+                        const waitingBtn = window.pendingCommands[parsed.cmd];
+                        if (waitingBtn) {
+                            clearTimeout(waitingBtn._pendingTimeout);   // ← cancel before it fires
+                            delete waitingBtn._pendingTimeout;
+                            delete window.pendingCommands[parsed.cmd];
+                            setBtnState(waitingBtn, 'success', 'PONG');
+                        }
+                        log('PONG!');
+                    }
+                    else if (/^\d{14}$/.test(parsed.cmd)) {
+
+                        const waitingBtn = window.pendingCommands['time'];
+                        if (waitingBtn) {
+                            clearTimeout(waitingBtn._pendingTimeout);   // ← cancel before it fires
+                            delete waitingBtn._pendingTimeout;
+                            delete window.pendingCommands['time'];
+                            setBtnState(waitingBtn, 'success', parsed.cmd);
+                        }
+                        log('TIME Recv!');
+                    }
+                    else {
+                        log("******")
+                        log(parsed.cmd);
+                        log("******")
+
+                    }
+
+                }
+                else {
+                    log(`📄 JSON: ${jsonString.substring(0, 120)}`);
                 }
 
-                log(`✅ Parsed ${items.length} items: ${items.map(i => `${i.k}=${i.v}`).join(', ')}`);
-
-                // Resolve any pending write confirmations (v === 0 means success)
-                items.forEach(item => {
-                    const pending = pendingWrites.get(item.k);
-                    if (pending && item.v === 0) {
-                        log(`✅ Write confirmed: ${item.k}`);
-                        pending.resolve();
-                    }
-                });
-
-                try { populateConfigInputs(items); } catch(e) { log(`⚠️ Config populate error: ${e.message}`, 'error'); }
-                updateUIWithData(parsed);
 
             } catch (error) {
                 log(`❌ Handler error: ${error.message}`, 'error');
