@@ -240,6 +240,9 @@ const P = {
     INVERTER_SERIAL:            'P002',
     INVERTER_FIRMWARE:          'P006',
 
+    // ── Device time ──────────────────────────────────────────────────────────
+    DST_OFFSET:                 'L096',
+
     // ── PV strings ───────────────────────────────────────────────────────────
     PV1_VOLTAGE:                'P024',
     PV1_CURRENT:                'P025',

@@ -158,7 +158,12 @@
             }
             return await writeParameter(P.WORK_MODE, modeNum);
         }
-
+        
+        async function commandSetDaylightSaving(modeStr) {
+            const value = document.getElementById('dstOffsetInput').value;
+            const ok = await writeParameter(P.DST_OFFSET, value);
+            log(ok ? `Daylight saving offset set to ${value}` : 'Failed to set daylight saving offset');
+        }
         // ── Button feedback helpers ───────────────────────
 
         function setButtonState(btn, state) {
