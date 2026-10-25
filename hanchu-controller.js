@@ -158,7 +158,37 @@
             }
             return await writeParameter(P.WORK_MODE, modeNum);
         }
+        
+        async function syncTime() {
+            const now = new Date();
+            const epoch = Math.floor(now.getTime() / 1000);
 
+            // getTimezoneOffset() is in minutes and positive west of UTC, so flip the sign
+            const offsetHours = -now.getTimezoneOffset() / 60;
+
+            if (!Number.isInteger(offsetHours)) {
+                log(`Browser offset ${offsetHours}h is not a whole number, rounding to ${Math.round(offsetHours)}h`);
+            }
+
+            const offsetOk = await writeParameter(P.DST_OFFSET, Math.round(offsetHours));
+            if (!offsetOk) {
+                log('Failed to set timezone offset');
+                return false;
+            }
+
+            const epochOk = await writeParameter(P.EPOCH, epoch);
+            if (!epochOk) {
+                log('Failed to set Unix timestamp');
+                return false;
+            }
+
+            log(`Time synced: epoch ${epoch}, UTC offset ${Math.round(offsetHours)}h`);
+            return true;
+        }
+
+        async function commandSyncTime() {
+            await syncTime();
+        }
         // ── Button feedback helpers ───────────────────────
 
         function setButtonState(btn, state) {
