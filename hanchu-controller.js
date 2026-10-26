@@ -163,14 +163,7 @@
             const now = new Date();
             const epoch = Math.floor(now.getTime() / 1000);
 
-            // getTimezoneOffset() is in minutes and positive west of UTC, so flip the sign
-            const offsetHours = -now.getTimezoneOffset() / 60;
-
-            if (!Number.isInteger(offsetHours)) {
-                log(`Browser offset ${offsetHours}h is not a whole number, rounding to ${Math.round(offsetHours)}h`);
-            }
-
-            const offsetOk = await writeParameter(P.DST_OFFSET, Math.round(offsetHours));
+            const offsetOk = await writeParameter(P.DST_OFFSET, now.getTimezoneOffset());
             if (!offsetOk) {
                 log('Failed to set timezone offset');
                 return false;
